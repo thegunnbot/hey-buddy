@@ -6,6 +6,8 @@
 # Database — champion data stays local
 db/*.sqlite
 db/*.db
+db/*.sqlite-shm
+db/*.sqlite-wal
 
 # Uploaded files
 uploads/
