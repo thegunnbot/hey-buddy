@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circle background -->
+  <circle cx="50" cy="50" r="50" fill="#1a2d4a"/>
+  <!-- Left vertical bar -->
+  <rect x="35" y="40" width="11" height="42" rx="3.5" fill="#5bc8e0"/>
+  <!-- Right vertical bar -->
+  <rect x="54" y="40" width="11" height="42" rx="3.5" fill="#5bc8e0"/>
+  <!-- Left curved arm extending from top of left bar upward-left -->
+  <path d="M40.5 43 C40.5 32 33 23 18 19" stroke="#5bc8e0" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <!-- Right curved arm extending from top of right bar upward-right -->
+  <path d="M59.5 43 C59.5 32 67 23 82 19" stroke="#5bc8e0" stroke-width="11" fill="none" stroke-linecap="round"/>
+</svg>

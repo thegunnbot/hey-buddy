@@ -1,0 +1,63 @@
+import { Router } from 'express'
+import {
+  listChampions, getChampion, addChampion, updateChampion,
+  addPersonalWin, addProfessionalWin, confirmProfessionalWin,
+  addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus,
+} from '../db.js'
+
+const router = Router()
+
+router.get('/', (req, res) => {
+  const includeArchived = req.query.includeArchived === 'true'
+  res.json(listChampions({ includeArchived }))
+})
+
+router.get('/:id', (req, res) => {
+  const c = getChampion(req.params.id)
+  if (!c) return res.status(404).json({ error: 'Not found' })
+  res.json(c)
+})
+
+router.post('/', (req, res) => {
+  const c = addChampion(req.body)
+  res.status(201).json(c)
+})
+
+router.patch('/:id', (req, res) => {
+  const c = updateChampion(req.params.id, req.body)
+  res.json(c)
+})
+
+router.post('/:id/personal-wins', (req, res) => {
+  res.status(201).json(addPersonalWin(req.params.id, req.body))
+})
+
+router.post('/:id/professional-wins', (req, res) => {
+  res.status(201).json(addProfessionalWin(req.params.id, req.body))
+})
+
+router.patch('/professional-wins/:winId/confirm', (req, res) => {
+  confirmProfessionalWin(req.params.winId)
+  res.json({ ok: true })
+})
+
+router.post('/:id/interactions', (req, res) => {
+  res.status(201).json(addInteraction(req.params.id, req.body))
+})
+
+router.patch('/:id/stage-criteria', (req, res) => {
+  const { transition, criterion_key, met } = req.body
+  updateStageCriteria(req.params.id, transition, criterion_key, met)
+  res.json({ ok: true })
+})
+
+router.post('/:id/triggers', (req, res) => {
+  res.status(201).json(addTrigger(req.params.id, req.body))
+})
+
+router.patch('/triggers/:triggerId/status', (req, res) => {
+  updateTriggerStatus(req.params.triggerId, req.body.status)
+  res.json({ ok: true })
+})
+
+export default router
