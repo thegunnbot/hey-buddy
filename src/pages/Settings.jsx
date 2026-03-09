@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell, Link, Sliders, Users, Plus, Trash2, Crown, User, Loader2, UserCircle, X, MessageSquare, Mail } from 'lucide-react'
 
 const integrations = [
@@ -397,9 +397,166 @@ function UsersSection() {
   )
 }
 
+// ── Cadence + Notifications (shared settings load) ────────────────────────
+
+const CADENCE_OPTIONS = [
+  { label: 'Weekly', days: 7 },
+  { label: 'Every 2 weeks', days: 14 },
+  { label: 'Monthly', days: 30 },
+  { label: 'Every 6 weeks', days: 42 },
+  { label: 'Every 2 months', days: 60 },
+]
+const OVERDUE_OPTIONS = [
+  { label: '3 days', days: 3 },
+  { label: '5 days', days: 5 },
+  { label: '7 days', days: 7 },
+  { label: '10 days', days: 10 },
+]
+
+function CadenceSection({ settings, onChange }) {
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [local, setLocal] = useState(null)
+
+  useEffect(() => { if (settings) setLocal(settings.cadence) }, [settings])
+
+  const save = async () => {
+    setSaving(true)
+    await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cadence: local }),
+    })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+    onChange?.()
+  }
+
+  if (!local) return (
+    <Section icon={Sliders} title="Cadence rules">
+      <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin" style={{ color: '#59bbb7' }} /></div>
+    </Section>
+  )
+
+  return (
+    <Section icon={Sliders} title="Cadence rules">
+      <Row>
+        <div>
+          <p className="text-sm font-medium" style={{ color: '#0f1924' }}>Default cadence</p>
+          <p className="text-xs mt-0.5" style={{ color: '#848d9a' }}>Any champion, no active deal</p>
+        </div>
+        <select value={local.default_days}
+          onChange={e => setLocal(p => ({ ...p, default_days: Number(e.target.value) }))}
+          className="rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+          style={{ border: '1px solid #e0e0e0', background: '#ffffff', color: '#0f1924' }}>
+          {CADENCE_OPTIONS.map(o => <option key={o.days} value={o.days}>{o.label}</option>)}
+        </select>
+      </Row>
+      <Row>
+        <div>
+          <p className="text-sm font-medium" style={{ color: '#0f1924' }}>Active deal cadence</p>
+          <p className="text-xs mt-0.5" style={{ color: '#848d9a' }}>Post-SQO champions</p>
+        </div>
+        <select value={local.active_deal_days}
+          onChange={e => setLocal(p => ({ ...p, active_deal_days: Number(e.target.value) }))}
+          className="rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+          style={{ border: '1px solid #e0e0e0', background: '#ffffff', color: '#0f1924' }}>
+          {CADENCE_OPTIONS.map(o => <option key={o.days} value={o.days}>{o.label}</option>)}
+        </select>
+      </Row>
+      <Row>
+        <div>
+          <p className="text-sm font-medium" style={{ color: '#0f1924' }}>Overdue threshold</p>
+          <p className="text-xs mt-0.5" style={{ color: '#848d9a' }}>Days overdue before marking as red</p>
+        </div>
+        <select value={local.overdue_threshold_days}
+          onChange={e => setLocal(p => ({ ...p, overdue_threshold_days: Number(e.target.value) }))}
+          className="rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+          style={{ border: '1px solid #e0e0e0', background: '#ffffff', color: '#0f1924' }}>
+          {OVERDUE_OPTIONS.map(o => <option key={o.days} value={o.days}>{o.label}</option>)}
+        </select>
+      </Row>
+      <div className="px-5 py-3" style={{ borderTop: '1px solid #f0f0f0' }}>
+        <button onClick={save} disabled={saving}
+          className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-40"
+          style={{ background: '#0f1924', color: '#fff' }}>
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {saved ? '✓ Saved' : 'Save cadence rules'}
+        </button>
+      </div>
+    </Section>
+  )
+}
+
+function NotificationsSection({ settings, onChange }) {
+  const [local, setLocal] = useState(null)
+  const [saving, setSaving] = useState(null) // key of the toggle being saved
+
+  useEffect(() => { if (settings) setLocal(settings.notifications) }, [settings])
+
+  const toggle = async (key) => {
+    const next = { ...local, [key]: !local[key] }
+    setLocal(next)
+    setSaving(key)
+    await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notifications: { [key]: next[key] } }),
+    })
+    setSaving(null)
+    onChange?.()
+  }
+
+  const items = [
+    { key: 'pre_call_briefs', label: 'Pre-call briefs', desc: '30 minutes before a meeting with a champion' },
+    { key: 'sports_triggers', label: 'Sports triggers', desc: 'Results and fixtures relevant to champions' },
+    { key: 'cadence_alerts', label: 'Cadence alerts', desc: 'When a champion is approaching or overdue' },
+    { key: 'stage_prompts', label: 'Stage progression prompts', desc: "Suggestions to advance a champion's stage" },
+  ]
+
+  if (!local) return (
+    <Section icon={Bell} title="Notifications">
+      <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin" style={{ color: '#59bbb7' }} /></div>
+    </Section>
+  )
+
+  return (
+    <Section icon={Bell} title="Notifications">
+      {items.map(n => (
+        <Row key={n.key}>
+          <div>
+            <p className="text-sm font-medium" style={{ color: '#0f1924' }}>{n.label}</p>
+            <p className="text-xs mt-0.5" style={{ color: '#848d9a' }}>{n.desc}</p>
+          </div>
+          <button
+            onClick={() => toggle(n.key)}
+            disabled={saving === n.key}
+            className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-60"
+            style={{ background: local[n.key] ? '#59bbb7' : '#e0e0e0' }}>
+            {saving === n.key
+              ? <Loader2 className="absolute inset-0 m-auto h-3 w-3 animate-spin" style={{ color: local[n.key] ? '#fff' : '#848d9a' }} />
+              : <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform"
+                  style={{ transform: local[n.key] ? 'translateX(18px)' : 'translateX(2px)' }} />
+            }
+          </button>
+        </Row>
+      ))}
+    </Section>
+  )
+}
+
 // ── Main Settings page ─────────────────────────────────────
 
 export default function Settings() {
+  const [settings, setSettings] = useState(null)
+
+  const loadSettings = useCallback(() => {
+    fetch('/api/settings').then(r => r.json()).then(setSettings).catch(() => {})
+  }, [])
+
+  useEffect(() => { loadSettings() }, [loadSettings])
+
   return (
     <div className="h-full overflow-auto" style={{ background: '#ffffff' }}>
       <div className="max-w-2xl mx-auto px-8 py-8 space-y-8">
@@ -412,45 +569,9 @@ export default function Settings() {
 
         <UsersSection />
 
-        <Section icon={Sliders} title="Cadence rules">
-          {[
-            { label: 'Default cadence', desc: 'Any champion, no active deal', options: ['Monthly', 'Every 2 weeks', 'Weekly'], selected: 'Monthly' },
-            { label: 'Active deal cadence', desc: 'Post-SQO champions', options: ['Every 2 weeks', 'Weekly', 'Monthly'], selected: 'Every 2 weeks' },
-            { label: 'Overdue threshold', desc: 'Days before marking as red', options: ['5 days', '3 days', '7 days'], selected: '5 days' },
-          ].map(item => (
-            <Row key={item.label}>
-              <div>
-                <p className="text-sm font-medium" style={{ color: '#0f1924' }}>{item.label}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#848d9a' }}>{item.desc}</p>
-              </div>
-              <select className="rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                style={{ border: '1px solid #e0e0e0', background: '#ffffff', color: '#0f1924' }}>
-                {item.options.map(o => <option key={o}>{o}</option>)}
-              </select>
-            </Row>
-          ))}
-        </Section>
+        <CadenceSection settings={settings} onChange={loadSettings} />
 
-        <Section icon={Bell} title="Notifications">
-          {[
-            { label: 'Pre-call briefs', desc: '30 minutes before a meeting with a champion', on: true },
-            { label: 'Sports triggers', desc: 'Results and fixtures relevant to champions', on: true },
-            { label: 'Cadence alerts', desc: 'When a champion is approaching or overdue', on: true },
-            { label: 'Stage progression prompts', desc: "Suggestions to advance a champion's stage", on: false },
-          ].map(n => (
-            <Row key={n.label}>
-              <div>
-                <p className="text-sm font-medium" style={{ color: '#0f1924' }}>{n.label}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#848d9a' }}>{n.desc}</p>
-              </div>
-              <button className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-                style={{ background: n.on ? '#59bbb7' : '#e0e0e0' }}>
-                <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform"
-                  style={{ transform: n.on ? 'translateX(18px)' : 'translateX(2px)' }} />
-              </button>
-            </Row>
-          ))}
-        </Section>
+        <NotificationsSection settings={settings} onChange={loadSettings} />
 
         <Section icon={Link} title="Integrations">
           {integrations.map(int => (

@@ -14,6 +14,7 @@ import pendingTriggersRouter from './routes/pending-triggers.js'
 import feedbackRouter from './routes/feedback.js'
 import usersRouter from './routes/users.js'
 import profileRouter from './routes/profile.js'
+import settingsRouter from './routes/settings.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -46,6 +47,7 @@ app.use('/api/pending-triggers', requireAuth, pendingTriggersRouter)
 app.use('/api/feedback', requireAuth, feedbackRouter)
 app.use('/api/users', requireAuth, usersRouter)
 app.use('/api/profile', requireAuth, profileRouter)
+app.use('/api/settings', requireAuth, settingsRouter)
 
 // Serve uploaded feedback screenshots
 app.use('/uploads', express.static(join(__dirname, '../uploads')))

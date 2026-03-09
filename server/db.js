@@ -480,10 +480,15 @@ export function resolvePendingTrigger(id, action) {
 
 // ── Health scoring ─────────────────────────────────────────
 
-export function computeHealthScore(championId) {
+export function computeHealthScore(championId, ownerId = 'rich') {
   const db = getDb()
   const champion = db.prepare('SELECT * FROM champions WHERE id = ?').get(championId)
   if (!champion) return null
+
+  // Pull live cadence settings (falls back to defaults if not set)
+  const s = getSettings(ownerId)
+  const defaultCadenceDays = s.cadence_default_days
+  const activeDealCadenceDays = s.cadence_active_deal_days
 
   const now = Date.now()
 
@@ -491,7 +496,7 @@ export function computeHealthScore(championId) {
   let recencyScore = 0
   if (champion.last_contact_date) {
     const daysSince = Math.floor((now - new Date(champion.last_contact_date)) / 86400000)
-    const cadence = champion.deal_status === 'post-sfo' ? 14 : 30
+    const cadence = champion.deal_status === 'post-sfo' ? activeDealCadenceDays : defaultCadenceDays
     const ratio = daysSince / cadence
     if (ratio <= 0.5) recencyScore = 40
     else if (ratio <= 1.0) recencyScore = Math.round(40 - (ratio - 0.5) * 40)
@@ -856,4 +861,56 @@ export function addSentMessage(ownerId, championId, suggestedText, actualText, c
 export function listSentMessages(ownerId, { limit = 20 } = {}) {
   const db = getDb()
   return db.prepare('SELECT * FROM sent_messages WHERE owner_id = ? ORDER BY sent_at DESC LIMIT ?').all(ownerId, limit)
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+const DEFAULT_SETTINGS = {
+  cadence_default_days: 30,
+  cadence_active_deal_days: 14,
+  overdue_threshold_days: 5,
+  notify_pre_call_briefs: 1,
+  notify_sports_triggers: 1,
+  notify_cadence_alerts: 1,
+  notify_stage_prompts: 0,
+}
+
+export function getSettings(ownerId = 'rich') {
+  const db = getDb()
+  const row = db.prepare('SELECT * FROM settings WHERE owner_id = ?').get(ownerId)
+  if (row) return row
+  // Auto-create defaults on first read
+  const id = crypto.randomUUID()
+  db.prepare(`
+    INSERT INTO settings (id, owner_id, cadence_default_days, cadence_active_deal_days,
+      overdue_threshold_days, notify_pre_call_briefs, notify_sports_triggers,
+      notify_cadence_alerts, notify_stage_prompts)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, ownerId,
+    DEFAULT_SETTINGS.cadence_default_days,
+    DEFAULT_SETTINGS.cadence_active_deal_days,
+    DEFAULT_SETTINGS.overdue_threshold_days,
+    DEFAULT_SETTINGS.notify_pre_call_briefs,
+    DEFAULT_SETTINGS.notify_sports_triggers,
+    DEFAULT_SETTINGS.notify_cadence_alerts,
+    DEFAULT_SETTINGS.notify_stage_prompts,
+  )
+  return db.prepare('SELECT * FROM settings WHERE owner_id = ?').get(ownerId)
+}
+
+export function updateSettings(ownerId = 'rich', patch) {
+  const db = getDb()
+  const allowed = [
+    'cadence_default_days', 'cadence_active_deal_days', 'overdue_threshold_days',
+    'notify_pre_call_briefs', 'notify_sports_triggers', 'notify_cadence_alerts', 'notify_stage_prompts',
+  ]
+  const fields = Object.keys(patch).filter(k => allowed.includes(k))
+  if (fields.length === 0) return getSettings(ownerId)
+  // Ensure row exists
+  getSettings(ownerId)
+  const sets = fields.map(f => `${f} = ?`).join(', ')
+  const vals = fields.map(f => patch[f])
+  db.prepare(`UPDATE settings SET ${sets}, updated_at = ? WHERE owner_id = ?`)
+    .run(...vals, new Date().toISOString(), ownerId)
+  return getSettings(ownerId)
 }

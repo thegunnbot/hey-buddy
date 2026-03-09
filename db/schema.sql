@@ -211,3 +211,20 @@ CREATE INDEX IF NOT EXISTS idx_triggers_status ON triggers(status);
 CREATE INDEX IF NOT EXISTS idx_pending_triggers_status ON pending_triggers(status);
 CREATE INDEX IF NOT EXISTS idx_champion_subjects_champion ON champion_subjects(champion_id);
 CREATE INDEX IF NOT EXISTS idx_health_scores_champion ON health_scores(champion_id, computed_at);
+
+-- App-wide settings (one row per owner; defaults shown)
+CREATE TABLE IF NOT EXISTS settings (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL UNIQUE,
+  -- Cadence rules (days)
+  cadence_default_days INTEGER NOT NULL DEFAULT 30,       -- any champion, no active deal
+  cadence_active_deal_days INTEGER NOT NULL DEFAULT 14,   -- post-SQO champions
+  overdue_threshold_days INTEGER NOT NULL DEFAULT 5,      -- days overdue before red
+  -- Notification toggles
+  notify_pre_call_briefs INTEGER NOT NULL DEFAULT 1,
+  notify_sports_triggers INTEGER NOT NULL DEFAULT 1,
+  notify_cadence_alerts INTEGER NOT NULL DEFAULT 1,
+  notify_stage_prompts INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
