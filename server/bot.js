@@ -10,8 +10,10 @@ import cron from 'node-cron'
 import {
   getTelegramSession, saveTelegramSession,
   isApprovedUser, isAdmin, approveUser, revokeUser, listBotUsers,
+  listOverdueChampions, getDueScheduledNotifications, markTriggerFired,
 } from './db.js'
 import { executeTool, TOOLS, SYSTEM_PROMPT } from './routes/chat.js'
+import { runSportsCheck } from './sports.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const RICH_ID = process.env.TELEGRAM_RICH_ID
@@ -275,7 +277,43 @@ export function sendTelegramMessage(chatId, text) {
 // ── Internal scheduler ─────────────────────────────────────
 
 function startScheduler() {
-  // Monthly travel check-in — 1st of month, 9am ET
+
+  // ── 8:00 AM ET daily — cadence alerts ─────────────────────
+  cron.schedule('0 8 * * *', async () => {
+    if (!bot || !RICH_ID) return
+    try {
+      await sendCadenceAlert()
+    } catch (err) {
+      console.error('[scheduler] Cadence alert error:', err.message)
+    }
+  }, { timezone: 'America/New_York' })
+
+  // ── Every 15 min — fire due scheduled notifications ────────
+  cron.schedule('*/15 * * * *', async () => {
+    if (!bot || !RICH_ID) return
+    try {
+      await fireScheduledNotifications()
+    } catch (err) {
+      console.error('[scheduler] Notification firing error:', err.message)
+    }
+  })
+
+  // ── 7:00 PM ET daily — nightly sports fixture check ───────
+  cron.schedule('0 19 * * *', async () => {
+    if (!bot || !RICH_ID) return
+    try {
+      const result = await runSportsCheck()
+      if (result.created > 0) {
+        await bot.sendMessage(RICH_ID,
+          `⚽ Sports check — ${result.created} new match trigger${result.created > 1 ? 's' : ''} queued.\n\nOpen Hey Buddy to review and approve them.`
+        )
+      }
+    } catch (err) {
+      console.error('[scheduler] Sports check error:', err.message)
+    }
+  }, { timezone: 'America/New_York' })
+
+  // ── 1st of month, 9:00 AM ET — travel check-in ────────────
   cron.schedule('0 9 1 * *', () => {
     if (bot && RICH_ID) {
       bot.sendMessage(RICH_ID,
@@ -284,5 +322,57 @@ function startScheduler() {
     }
   }, { timezone: 'America/New_York' })
 
-  console.log('📅 Internal scheduler started')
+  console.log('📅 Scheduler started — cadence alerts 8am ET | notifications every 15min | sports check 7pm ET | travel check-in 1st of month')
+}
+
+// ── Cadence alert ──────────────────────────────────────────
+
+async function sendCadenceAlert() {
+  const overdue = listOverdueChampions()
+  if (!overdue.length) return
+
+  const overdueList = overdue.filter(c => c.status === 'overdue')
+  const approachingList = overdue.filter(c => c.status === 'approaching')
+
+  if (!overdueList.length && !approachingList.length) return
+
+  const lines = []
+
+  if (overdueList.length) {
+    lines.push(`🔴 *Overdue* (${overdueList.length})`)
+    for (const c of overdueList) {
+      const cadenceLabel = c.cadenceDays === 7 ? 'weekly' : c.cadenceDays === 14 ? 'fortnightly' : 'monthly'
+      lines.push(`• ${c.name} (${c.company}) — ${c.daysSince}d since last contact (${cadenceLabel} cadence)`)
+    }
+  }
+
+  if (approachingList.length) {
+    lines.push(`\n🟡 *Approaching* (${approachingList.length})`)
+    for (const c of approachingList) {
+      const daysLeft = c.cadenceDays - c.daysSince
+      lines.push(`• ${c.name} (${c.company}) — due in ${daysLeft}d`)
+    }
+  }
+
+  lines.push(`\nReply to chat or open Hey Buddy to see suggested outreach.`)
+
+  const total = overdueList.length + approachingList.length
+  const header = `📊 *Cadence check — ${total} champion${total > 1 ? 's' : ''} need${total === 1 ? 's' : ''} attention*\n`
+
+  await bot.sendMessage(RICH_ID, header + lines.join('\n'), { parse_mode: 'Markdown' })
+}
+
+// ── Fire scheduled notifications ──────────────────────────
+
+async function fireScheduledNotifications() {
+  const due = getDueScheduledNotifications()
+  for (const trigger of due) {
+    const championContext = trigger.champion_name
+      ? ` (re: ${trigger.champion_name}, ${trigger.champion_company})`
+      : ''
+    const msg = `🔔 *${trigger.title}*${championContext}\n\n${trigger.description}`
+    await bot.sendMessage(RICH_ID, msg, { parse_mode: 'Markdown' })
+    markTriggerFired(trigger.id)
+    console.log(`[scheduler] Fired notification: ${trigger.title}`)
+  }
 }

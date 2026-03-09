@@ -17,6 +17,8 @@ export function getDb() {
     db.pragma('foreign_keys = ON')
     const schema = readFileSync(SCHEMA_PATH, 'utf8')
     db.exec(schema)
+    // Migrations for columns added after initial deploy
+    try { db.exec('ALTER TABLE triggers ADD COLUMN fire_at TEXT') } catch {}
   }
   return db
 }
@@ -913,4 +915,73 @@ export function updateSettings(ownerId = 'rich', patch) {
   db.prepare(`UPDATE settings SET ${sets}, updated_at = ? WHERE owner_id = ?`)
     .run(...vals, new Date().toISOString(), ownerId)
   return getSettings(ownerId)
+}
+
+// ── Cadence + notification scheduling ─────────────────────────────────────────
+
+/**
+ * Returns champions that are overdue or approaching overdue.
+ * Each result includes: champion fields + daysSince + cadenceDays + status ('overdue'|'approaching')
+ */
+export function listOverdueChampions(ownerId = 'rich') {
+  const db = getDb()
+  const s = getSettings(ownerId)
+  const now = Date.now()
+  const champions = db.prepare(
+    "SELECT * FROM champions WHERE archived = 0 AND last_contact_date IS NOT NULL ORDER BY last_contact_date ASC"
+  ).all()
+
+  const results = []
+  for (const c of champions) {
+    const daysSince = Math.floor((now - new Date(c.last_contact_date)) / 86400000)
+    const cadenceDays = c.deal_status === 'post-sfo' ? s.cadence_active_deal_days : s.cadence_default_days
+    const overdueBy = daysSince - cadenceDays
+    const approachingWindow = s.overdue_threshold_days
+
+    if (overdueBy >= 0) {
+      results.push({ ...c, daysSince, cadenceDays, overdueBy, status: 'overdue' })
+    } else if (overdueBy >= -approachingWindow) {
+      results.push({ ...c, daysSince, cadenceDays, overdueBy, status: 'approaching' })
+    }
+  }
+  return results
+}
+
+/**
+ * Returns one-shot scheduled notifications due to fire now.
+ */
+export function getDueScheduledNotifications() {
+  const db = getDb()
+  const now = new Date().toISOString()
+  return db.prepare(`
+    SELECT n.*, c.name as champion_name, c.company as champion_company
+    FROM scheduled_notifications n
+    LEFT JOIN champions c ON c.id = n.champion_id
+    WHERE n.status = 'pending'
+      AND n.fire_at <= ?
+    ORDER BY n.fire_at ASC
+  `).all(now)
+}
+
+/**
+ * Mark a scheduled notification as fired.
+ */
+export function markTriggerFired(id) {
+  const db = getDb()
+  db.prepare(
+    "UPDATE scheduled_notifications SET status = 'fired', fired_at = ? WHERE id = ?"
+  ).run(new Date().toISOString(), id)
+}
+
+/**
+ * Schedule a one-shot notification (used by the schedule_notification Claude tool).
+ */
+export function scheduleNotification({ championId = null, title, message, fireAt }) {
+  const db = getDb()
+  const id = crypto.randomUUID()
+  db.prepare(`
+    INSERT INTO scheduled_notifications (id, champion_id, title, message, fire_at, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'pending', ?)
+  `).run(id, championId || null, title, message, fireAt, new Date().toISOString())
+  return { id, title, fire_at: fireAt }
 }

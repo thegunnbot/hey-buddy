@@ -64,13 +64,14 @@ CREATE TABLE IF NOT EXISTS interactions (
 
 CREATE TABLE IF NOT EXISTS triggers (
   id TEXT PRIMARY KEY,
-  champion_id TEXT NOT NULL REFERENCES champions(id) ON DELETE CASCADE,
-  trigger_type TEXT NOT NULL,   -- sports|cadence|calendar|news|custom
+  champion_id TEXT REFERENCES champions(id) ON DELETE CASCADE,  -- nullable for non-champion notifications
+  trigger_type TEXT NOT NULL,   -- sports|cadence|calendar|news|custom|scheduled
   title TEXT NOT NULL,
   description TEXT,
   suggested_message TEXT,
   schedule TEXT,                -- null|weekly|monthly|match_event (for custom triggers)
-  status TEXT NOT NULL DEFAULT 'pending',  -- pending|acted|skipped|dismissed
+  status TEXT NOT NULL DEFAULT 'pending',  -- pending|acted|skipped|dismissed|fired
+  fire_at TEXT,                 -- ISO datetime for one-shot scheduled notifications
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at TEXT,
   acted_at TEXT
@@ -211,6 +212,20 @@ CREATE INDEX IF NOT EXISTS idx_triggers_status ON triggers(status);
 CREATE INDEX IF NOT EXISTS idx_pending_triggers_status ON pending_triggers(status);
 CREATE INDEX IF NOT EXISTS idx_champion_subjects_champion ON champion_subjects(champion_id);
 CREATE INDEX IF NOT EXISTS idx_health_scores_champion ON health_scores(champion_id, computed_at);
+
+-- One-shot scheduled notifications (Telegram pushes at a specific time)
+-- Separate from triggers — no champion_id required
+CREATE TABLE IF NOT EXISTS scheduled_notifications (
+  id TEXT PRIMARY KEY,
+  champion_id TEXT REFERENCES champions(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  fire_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',  -- pending|fired|cancelled
+  fired_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_notifications_fire_at ON scheduled_notifications(fire_at, status);
 
 -- App-wide settings (one row per owner; defaults shown)
 CREATE TABLE IF NOT EXISTS settings (

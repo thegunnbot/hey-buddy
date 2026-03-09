@@ -5,7 +5,7 @@ import {
   addProfessionalWin, confirmProfessionalWin, addInteraction,
   updateStageCriteria, addTrigger, updateChampion,
   addPendingTrigger, listPendingTriggers, computeHealthScore, getHealthScore,
-  getUserProfile, listToneSamples,
+  getUserProfile, listToneSamples, scheduleNotification,
 } from '../db.js'
 
 const router = Router()
@@ -71,6 +71,7 @@ When Rich gives you information or asks questions, you can:
 - Log interactions, personal wins, professional wins
 - **Propose triggers** using propose_trigger — do this proactively when you spot signals in transcripts or notes (e.g. a sport, hobby, passion, upcoming event). Never silently ignore a potential trigger.
 - Add confirmed custom triggers for a champion (e.g. "send weekly positive news to Claire")
+- **Schedule reminders** using schedule_notification — when Rich asks to be reminded about something (e.g. "remind me to message Sarah before the Chelsea game"), schedule it as a Telegram push. Always confirm the exact datetime before creating.
 - Update stage criteria when a criterion has been met
 - Parse call transcripts to extract champion intel — always propose triggers for any interests you identify
 - Get a champion's current health score breakdown
@@ -221,6 +222,35 @@ export const TOOLS = [
     description: 'List all pending trigger proposals awaiting approval.',
     input_schema: { type: 'object', properties: {}, required: [] },
   },
+  {
+    name: 'schedule_notification',
+    description: `Schedule a one-shot Telegram notification to fire at a specific date and time.
+Use this when Rich asks to be reminded about something — e.g. "remind me to message Sarah on Chelsea match day", "remind me before the deal review on Thursday".
+Always confirm the fire_at datetime before creating. If a specific match date is mentioned, look it up or ask Rich to confirm the date.
+For the notification_message, write what will be sent to Rich's Telegram — make it specific and actionable.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Short title for the notification (e.g. "Chelsea vs Arsenal — reach out to Sarah")',
+        },
+        notification_message: {
+          type: 'string',
+          description: 'The message that will be sent to Rich via Telegram when the notification fires. Make it specific and actionable.',
+        },
+        fire_at: {
+          type: 'string',
+          description: 'ISO 8601 datetime when to send this notification (e.g. "2026-03-15T08:00:00"). Use 8:00 AM if only a date was given.',
+        },
+        champion_id: {
+          type: 'string',
+          description: 'Champion ID this reminder is about (optional — omit if not champion-specific)',
+        },
+      },
+      required: ['title', 'notification_message', 'fire_at'],
+    },
+  },
 ]
 
 export function executeTool(name, input) {
@@ -253,6 +283,13 @@ export function executeTool(name, input) {
       return getHealthScore(input.champion_id)
     case 'list_pending_triggers':
       return listPendingTriggers()
+    case 'schedule_notification':
+      return scheduleNotification({
+        championId: input.champion_id || null,
+        title: input.title,
+        message: input.notification_message,
+        fireAt: input.fire_at,
+      })
     default:
       return { error: 'Unknown tool' }
   }
