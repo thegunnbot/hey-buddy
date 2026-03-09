@@ -979,9 +979,15 @@ export function markTriggerFired(id) {
 export function scheduleNotification({ championId = null, title, message, fireAt }) {
   const db = getDb()
   const id = crypto.randomUUID()
+  // Validate champion_id — if it doesn't exist, store null rather than failing the FK constraint
+  let resolvedChampionId = null
+  if (championId) {
+    const exists = db.prepare('SELECT id FROM champions WHERE id = ?').get(championId)
+    resolvedChampionId = exists ? championId : null
+  }
   db.prepare(`
     INSERT INTO scheduled_notifications (id, champion_id, title, message, fire_at, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'pending', ?)
-  `).run(id, championId || null, title, message, fireAt, new Date().toISOString())
+  `).run(id, resolvedChampionId, title, message, fireAt, new Date().toISOString())
   return { id, title, fire_at: fireAt }
 }

@@ -254,6 +254,21 @@ For the notification_message, write what will be sent to Rich's Telegram — mak
 ]
 
 export function executeTool(name, input) {
+  try {
+    return _executeToolInner(name, input)
+  } catch (err) {
+    console.error(`Tool error [${name}]:`, err.message)
+    // Return a structured error so Claude can recover (e.g. call list_champions to get the right ID)
+    const isFK = err.code === 'SQLITE_CONSTRAINT_FOREIGNKEY'
+    return {
+      error: isFK
+        ? `Champion not found — the champion_id "${input.champion_id}" does not exist. Call list_champions to get valid IDs.`
+        : `Tool "${name}" failed: ${err.message}`,
+    }
+  }
+}
+
+function _executeToolInner(name, input) {
   switch (name) {
     case 'list_champions': {
       const champions = listChampions()

@@ -1,4 +1,12 @@
 import 'dotenv/config'
+
+// Global safety net — log crashes instead of dying silently
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught exception:', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 Unhandled rejection:', reason)
+})
 import express from 'express'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
