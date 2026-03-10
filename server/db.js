@@ -279,8 +279,8 @@ export function getTelegramSession(telegramUserId) {
 export function saveTelegramSession(telegramUserId, messages, username = null) {
   const db = getDb()
   const now = new Date().toISOString()
-  // Keep last 20 messages to control context window cost
-  const trimmed = messages.slice(-20)
+  // Keep last 30 messages to control context window cost
+  const trimmed = messages.slice(-30)
   const existing = db.prepare('SELECT id FROM telegram_sessions WHERE telegram_user_id = ?').get(String(telegramUserId))
   if (existing) {
     db.prepare('UPDATE telegram_sessions SET messages = ?, telegram_username = ?, updated_at = ? WHERE telegram_user_id = ?')
@@ -289,6 +289,12 @@ export function saveTelegramSession(telegramUserId, messages, username = null) {
     db.prepare('INSERT INTO telegram_sessions (id, telegram_user_id, telegram_username, messages, updated_at) VALUES (?, ?, ?, ?, ?)')
       .run(uuidv4(), String(telegramUserId), username, JSON.stringify(trimmed), now)
   }
+}
+
+export function clearTelegramSession(telegramUserId) {
+  const db = getDb()
+  db.prepare('UPDATE telegram_sessions SET messages = ?, updated_at = ? WHERE telegram_user_id = ?')
+    .run('[]', new Date().toISOString(), String(telegramUserId))
 }
 
 // ── Archive ────────────────────────────────────────────────

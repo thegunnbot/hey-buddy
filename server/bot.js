@@ -8,7 +8,7 @@ import TelegramBot from 'node-telegram-bot-api'
 import Anthropic from '@anthropic-ai/sdk'
 import cron from 'node-cron'
 import {
-  getTelegramSession, saveTelegramSession,
+  getTelegramSession, saveTelegramSession, clearTelegramSession,
   isApprovedUser, isAdmin, approveUser, revokeUser, listBotUsers,
   listOverdueChampions, getDueScheduledNotifications, markTriggerFired,
 } from './db.js'
@@ -138,6 +138,11 @@ async function handleMessage(msg) {
       `👋 Hey Rich — I'm Hey Buddy, your champion relationship assistant.\n\nAsk me anything, log an interaction, or paste a call transcript and I'll extract the intel.`
     )
   }
+  if (text === '/new') {
+    clearTelegramSession(userId)
+    return bot.sendMessage(chatId, '🔄 Fresh start — conversation history cleared.')
+  }
+
   if (text === '/help') {
     return bot.sendMessage(chatId,
       `What I can do:\n\n` +
@@ -146,6 +151,7 @@ async function handleMessage(msg) {
       `• "What's my weakest relationship right now?"\n` +
       `• "Add Sarah Clarke at Lloyd's as a new prospect"\n` +
       `• Paste a call transcript → I'll extract champion intel\n\n` +
+      `Type /new to start a fresh conversation.\n\n` +
       `Just talk naturally.`
     )
   }
