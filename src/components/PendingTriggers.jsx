@@ -36,7 +36,7 @@ export default function PendingTriggers({ onResolved }) {
       >
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4" style={{ color: '#59bbb7' }} />
-          <span className="text-sm font-semibold" style={{ color: '#0f1924' }}>Suggested triggers</span>
+          <span className="text-sm font-semibold" style={{ color: '#0f1924' }}>Suggested interests</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white" style={{ background: '#59bbb7' }}>
             {pending.length}
           </span>

@@ -58,6 +58,13 @@ function enrichChampion(champion) {
     stageCriteria: getStageCriteria(champion.id),
     interactions: db.prepare('SELECT * FROM interactions WHERE champion_id = ? ORDER BY date DESC').all(champion.id),
     triggers: db.prepare('SELECT * FROM triggers WHERE champion_id = ? ORDER BY created_at DESC').all(champion.id),
+    interests: db.prepare(`
+      SELECT s.id, s.name, s.category, cs.confidence, cs.evidence
+      FROM champion_subjects cs
+      JOIN subjects s ON s.id = cs.subject_id
+      WHERE cs.champion_id = ?
+      ORDER BY cs.confidence DESC, s.name ASC
+    `).all(champion.id),
   }
 }
 
@@ -490,15 +497,9 @@ export function resolvePendingTrigger(id, action) {
   db.prepare('UPDATE pending_triggers SET status = ? WHERE id = ?').run(action, id)
 
   if (action === 'approved') {
-    // Promote to real trigger and register subject
+    // Register as an interest/subject — NOT a trigger/action
     const subject = findOrCreateSubject(pending.subject_name, pending.subject_type)
     linkChampionToSubject(pending.champion_id, subject.id, 'explicit', pending.evidence)
-    addTrigger(pending.champion_id, {
-      trigger_type: 'custom',
-      title: pending.subject_name,
-      description: pending.evidence,
-      schedule: null,
-    })
   }
 
   return pending

@@ -3,7 +3,7 @@ import {
   Search, Linkedin, Phone, MessageSquare,
   CheckCircle, Circle, ExternalLink,
   Trophy, Briefcase, User, Clock, Plus, Zap,
-  Archive, ArchiveRestore, MapPin, Pencil
+  Archive, ArchiveRestore, MapPin, Pencil, Sparkles
 } from 'lucide-react'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
@@ -337,6 +337,33 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                     Dismiss
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Interests & intelligence topics */}
+            {champion.interests?.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4" style={{ color: '#49deff' }} />
+                  <h3 className="text-sm font-semibold text-gray-900">Interests & intelligence topics</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {champion.interests.map(interest => (
+                    <div key={interest.id}
+                      className="group relative rounded-lg px-3 py-2 text-xs"
+                      style={{ background: 'rgba(73,222,255,0.08)', border: '1px solid rgba(73,222,255,0.25)' }}
+                      title={interest.evidence}
+                    >
+                      <span className="font-medium" style={{ color: '#0f1924' }}>{interest.name}</span>
+                      {interest.category && (
+                        <span className="ml-1.5" style={{ color: '#848d9a' }}>· {interest.category}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs mt-2" style={{ color: '#c0c0c0' }}>
+                  These topics will drive proactive intelligence alerts when relevant news breaks.
+                </p>
               </div>
             )}
 
