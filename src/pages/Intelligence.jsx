@@ -45,10 +45,24 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
-function DismissPopover({ onDismiss, onClose }) {
+function DismissPopover({ onDismiss, onClose, anchorRect }) {
   const [reason, setReason] = useState(null)
   const [note, setNote] = useState('')
   const ref = useRef(null)
+
+  // Position: fixed, appearing above or below the anchor depending on space
+  const popoverHeight = reason === 'not_relevant' ? 160 : 132
+  const spaceBelow = window.innerHeight - anchorRect.bottom
+  const openUpward = spaceBelow < popoverHeight + 12
+  const style = {
+    position: 'fixed',
+    right: window.innerWidth - anchorRect.right,
+    zIndex: 9999,
+    width: 224,
+    ...(openUpward
+      ? { bottom: window.innerHeight - anchorRect.top + 4 }
+      : { top: anchorRect.bottom + 4 }),
+  }
 
   useEffect(() => {
     function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) onClose() }
@@ -63,12 +77,11 @@ function DismissPopover({ onDismiss, onClose }) {
   ]
 
   function submit(r) {
-    if (r === 'not_relevant' && !note.trim()) return // require note before submit
-    onDismiss(r, r === 'not_relevant' ? note.trim() : null)
+    onDismiss(r, r === 'not_relevant' ? note.trim() || null : null)
   }
 
   return (
-    <div ref={ref} className="absolute right-0 top-7 z-50 w-56 bg-white rounded-xl shadow-xl border border-gray-200 p-2">
+    <div ref={ref} style={style} className="bg-white rounded-xl shadow-xl border border-gray-200 p-2">
       {!reason ? (
         <div className="space-y-0.5">
           {options.map(({ id, icon: Icon, label, colour }) => (
@@ -115,7 +128,7 @@ export default function Intelligence({ onChampionClick }) {
   const [scanning, setScanning] = useState(false)
   const [showDismissed, setShowDismissed] = useState(false)
   const [collapsedDates, setCollapsedDates] = useState({})
-  const [openPopover, setOpenPopover] = useState(null) // item id
+  const [openPopover, setOpenPopover] = useState(null) // { id, rect }
 
   const load = useCallback(async () => {
     try {
@@ -130,6 +143,7 @@ export default function Intelligence({ onChampionClick }) {
   async function dismiss(id, reason, note) {
     setItems(prev => prev.filter(i => i.id !== id))
     setOpenPopover(null)
+
     await fetch(`/api/intelligence/${id}/dismiss`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -149,7 +163,14 @@ export default function Intelligence({ onChampionClick }) {
   const grouped = groupByChampionAndDate(items)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-full overflow-hidden bg-gray-50 relative">
+      {openPopover && (
+        <DismissPopover
+          anchorRect={openPopover.rect}
+          onDismiss={(reason, note) => dismiss(openPopover.id, reason, note)}
+          onClose={() => setOpenPopover(null)}
+        />
+      )}
       {/* Header */}
       <div className="px-6 py-4 bg-white border-b border-gray-200 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -258,21 +279,19 @@ export default function Intelligence({ onChampionClick }) {
                                   {item.pub_date && <span className="text-xs text-gray-300">{timeAgo(item.pub_date)}</span>}
                                 </div>
                               </div>
-                              <div className="relative shrink-0">
+                              <div className="shrink-0">
                                 <button
-                                  onClick={() => setOpenPopover(openPopover === item.id ? null : item.id)}
+                                  onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect()
+                                    setOpenPopover(openPopover?.id === item.id ? null : { id: item.id, rect })
+                                  }}
                                   className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-all"
                                   title="Dismiss"
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </button>
-                                {openPopover === item.id && (
-                                  <DismissPopover
-                                    onDismiss={(reason, note) => dismiss(item.id, reason, note)}
-                                    onClose={() => setOpenPopover(null)}
-                                  />
-                                )}
                               </div>
+
                             </div>
                           )
                         })}
