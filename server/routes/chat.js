@@ -342,7 +342,8 @@ function buildSystemPrompt(ownerId) {
     personalisation += `\n\n## Interest overlap with champions\nWhen you notice a champion shares a sport, team, or interest with the user, flag it explicitly — this is a stronger touchpoint than a generic message. If their teams are rivals, mention it as banter fuel.`
   }
 
-  return SYSTEM_PROMPT + personalisation
+  const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return `## Current date and time\nToday is ${now} (America/New_York).\n\n` + SYSTEM_PROMPT + personalisation
 }
 
 router.post('/', async (req, res) => {

@@ -260,12 +260,12 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
   const today = new Date()
   const dayName = today.toLocaleDateString('en-GB', { weekday: 'long' })
   const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  // Track actioned cards so they disappear immediately
+  const [dismissedActionIds, setDismissedActionIds] = useState(new Set())
+
   const prospectCustomer = champions.filter(c => c.type !== 'network')
   const network = champions.filter(c => c.type === 'network')
   const actions = buildActions(champions).filter(a => !dismissedActionIds.has(a.id))
-
-  // Track actioned cards so they disappear immediately
-  const [dismissedActionIds, setDismissedActionIds] = useState(new Set())
   function handleActionTaken(actionId) {
     setDismissedActionIds(prev => new Set([...prev, actionId]))
   }
