@@ -53,7 +53,7 @@ function buildActions(champions) {
   return actions.sort((a, b) => a.priority - b.priority).slice(0, 6)
 }
 
-function ActionCard({ action, onChampionClick, onFeedbackTriggered }) {
+function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTaken }) {
   const { icon: Icon, color, bg, border } = actionTypeConfig[action.type] || actionTypeConfig.trigger
   const [channel, setChannel] = useState('short') // short | long
   const [longMsg, setLongMsg] = useState(null)
@@ -61,6 +61,27 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered }) {
   const [copied, setCopied] = useState(false)
 
   const currentMsg = channel === 'long' && longMsg ? longMsg : action.suggestedMessage
+
+  async function handleAction(type) {
+    // For trigger-based cards: update trigger status in DB
+    if (action.triggerId) {
+      const status = type === 'done' ? 'acted' : 'dismissed'
+      await fetch(`/api/champions/triggers/${action.triggerId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      }).catch(() => {})
+    }
+    // For overdue/approaching cards marked done: log an interaction to reset the cadence
+    if (type === 'done' && !action.triggerId) {
+      await fetch(`/api/champions/${action.champion.id}/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'Note', notes: 'Marked done from action card', date: new Date().toISOString().split('T')[0] }),
+      }).catch(() => {})
+    }
+    onActionTaken(action.id)
+  }
 
   async function switchToLong() {
     if (longMsg) { setChannel('long'); return }
@@ -150,11 +171,11 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered }) {
       )}
 
       <div className="ml-7 flex gap-2">
-        <button className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+        <button onClick={() => handleAction('done')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           style={{ background: '#0f1924', color: '#59bbb7' }}>Mark done</button>
-        <button className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+        <button onClick={() => handleAction('snooze')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>Snooze</button>
-        <button className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+        <button onClick={() => handleAction('dismiss')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>Dismiss</button>
       </div>
     </div>
@@ -241,7 +262,13 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
   const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   const prospectCustomer = champions.filter(c => c.type !== 'network')
   const network = champions.filter(c => c.type === 'network')
-  const actions = buildActions(champions)
+  const actions = buildActions(champions).filter(a => !dismissedActionIds.has(a.id))
+
+  // Track actioned cards so they disappear immediately
+  const [dismissedActionIds, setDismissedActionIds] = useState(new Set())
+  function handleActionTaken(actionId) {
+    setDismissedActionIds(prev => new Set([...prev, actionId]))
+  }
 
   // Inject feedback prompt into chat when user copies a message
   const [feedbackInjection, setFeedbackInjection] = useState(null)
@@ -279,7 +306,7 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
                     style={{ background: '#59bbb7', color: '#0f1924' }}>{actions.length}</span>
                 </div>
                 <div className="space-y-3">
-                  {actions.map(a => <ActionCard key={a.id} action={a} onChampionClick={onChampionClick} onFeedbackTriggered={handleFeedbackTriggered} />)}
+                  {actions.map(a => <ActionCard key={a.id} action={a} onChampionClick={onChampionClick} onFeedbackTriggered={handleFeedbackTriggered} onActionTaken={handleActionTaken} />)}
                 </div>
               </section>
             )}
