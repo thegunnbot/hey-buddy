@@ -13,7 +13,8 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import rateLimit from 'express-rate-limit'
 import { seedMockData, getHealthScore, computeHealthScore, listSubjects, archiveChampion, unarchiveChampion, listChampions, getChampionsByLocation, addPendingTrigger } from './db.js'
-import { startBot } from './bot.js'
+import { startBot, sendTelegramMessage } from './bot.js'
+import { scanChampionInterests, formatDigest } from './intelligence.js'
 import { requireAuth } from './middleware/auth.js'
 import championsRouter from './routes/champions.js'
 import chatRouter from './routes/chat.js'
@@ -124,6 +125,28 @@ app.post('/api/champions/:id/health-score/refresh', (req, res) => {
 app.get('/api/subjects', (req, res) => {
   try { res.json(listSubjects()) }
   catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// Intelligence scan — internal endpoint (protected by SCAN_SECRET)
+app.post('/api/intelligence/scan', async (req, res) => {
+  const secret = process.env.SCAN_SECRET
+  if (!secret || req.headers['x-scan-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorised' })
+  }
+  try {
+    const days = parseInt(req.query.days) || 2
+    const results = await scanChampionInterests(null, days)
+    const digest = formatDigest(results, days)
+    if (digest) {
+      await sendTelegramMessage(process.env.TELEGRAM_RICH_ID, digest, { parse_mode: 'Markdown' })
+      res.json({ ok: true, championsWithNews: results.length, sent: true })
+    } else {
+      res.json({ ok: true, championsWithNews: 0, sent: false, message: 'No news found — nothing sent.' })
+    }
+  } catch (err) {
+    console.error('Intelligence scan error:', err)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // Health check

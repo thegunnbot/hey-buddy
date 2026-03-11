@@ -275,9 +275,9 @@ async function sendLongMessage(chatId, text) {
   }
 }
 
-export function sendTelegramMessage(chatId, text) {
+export function sendTelegramMessage(chatId, text, options = {}) {
   if (!bot) return
-  return bot.sendMessage(chatId || RICH_ID, text)
+  return bot.sendMessage(chatId || RICH_ID, text, options)
 }
 
 // ── Internal scheduler ─────────────────────────────────────
