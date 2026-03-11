@@ -35,7 +35,7 @@ const stageTransitionLabel = {
 
 function ChampionRow({ champion, selected, onClick }) {
   const daysSince = Math.floor(
-    (new Date('2026-03-05') - new Date(champion.lastContactDate)) / (1000 * 60 * 60 * 24),
+    (new Date() - new Date(champion.lastContactDate)) / (1000 * 60 * 60 * 24),
   )
   const hasNextAction = !!champion.nextAction
 
@@ -105,7 +105,7 @@ function ChampionDetail({ champion, onArchiveToggle }) {
   const [activeSection, setActiveSection] = useState('overview')
   const [archiving, setArchiving] = useState(false)
   const daysSince = Math.floor(
-    (new Date('2026-03-05') - new Date(champion.lastContactDate)) / (1000 * 60 * 60 * 24),
+    (new Date() - new Date(champion.lastContactDate)) / (1000 * 60 * 60 * 24),
   )
 
   const handleArchiveToggle = async () => {
