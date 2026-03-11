@@ -584,7 +584,6 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
             {/* Outstanding actions */}
             {(() => {
               const pending = (champion.triggers || []).filter(t => t.status === 'pending')
-              if (!pending.length) return null
 
               function nextDue(t) {
                 if (t.fire_at) return new Date(t.fire_at)
@@ -610,7 +609,50 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                     <span className="text-xs font-medium rounded-full px-2 py-0.5" style={{ background: 'rgba(89,187,183,0.12)', color: '#59bbb7' }}>
                       {sorted.length}
                     </span>
+                    <button onClick={() => openAddForm('action', { title: '', description: '', suggested_message: '', fire_at: '', schedule: '' })}
+                      className="ml-auto p-1 rounded hover:bg-gray-100 transition-colors"
+                      style={{ color: '#59bbb7' }} title="Add action">
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
                   </div>
+                  {addingSection === 'action' && (
+                    <div className="rounded-lg p-3 space-y-2 mb-3" style={{ background: '#f9f9f9', border: '1px solid #e0e0e0' }}>
+                      <input value={formValues.title || ''} onChange={e => setFormValues(v => ({ ...v, title: e.target.value }))}
+                        placeholder="Title"
+                        className="rounded-lg px-3 py-2 text-sm w-full"
+                        style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }} />
+                      <input value={formValues.description || ''} onChange={e => setFormValues(v => ({ ...v, description: e.target.value }))}
+                        placeholder="Description (optional)"
+                        className="rounded-lg px-3 py-2 text-sm w-full"
+                        style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }} />
+                      <textarea value={formValues.suggested_message || ''} onChange={e => setFormValues(v => ({ ...v, suggested_message: e.target.value }))}
+                        placeholder="Suggested message to send"
+                        rows={2}
+                        className="rounded-lg px-3 py-2 text-sm w-full resize-none"
+                        style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }} />
+                      <input type="datetime-local" value={formValues.fire_at || ''} onChange={e => setFormValues(v => ({ ...v, fire_at: e.target.value }))}
+                        className="rounded-lg px-3 py-2 text-sm w-full"
+                        style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }} />
+                      <select value={formValues.schedule || ''} onChange={e => setFormValues(v => ({ ...v, schedule: e.target.value }))}
+                        className="rounded-lg px-3 py-2 text-sm w-full"
+                        style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }}>
+                        <option value="">No repeat</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                      <div className="flex gap-2">
+                        <button onClick={saveAction}
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                          style={{ background: '#0f1924', color: '#59bbb7' }}>Save</button>
+                        <button onClick={closeAddForm}
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                          style={{ background: '#fff', color: '#848d9a', border: '1px solid #e0e0e0' }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                  {sorted.length === 0 && addingSection !== 'action' && (
+                    <p className="text-sm text-gray-400 italic">No outstanding actions</p>
+                  )}
                   <div className="space-y-2">
                     {sorted.map(t => {
                       const due = nextDue(t)
