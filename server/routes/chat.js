@@ -8,22 +8,25 @@ import {
   getUserProfile, listToneSamples, scheduleNotification, getDb,
 } from '../db.js'
 
-async function fetchNewsForTopic(topic, days = 7) {
-  const query = encodeURIComponent(`${topic} ${days <= 3 ? 'today' : days <= 7 ? 'this week' : `last ${days} days`}`)
-  const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`
+async function fetchNewsForTopic(topic, days = 2) {
+  const query = encodeURIComponent(topic)
+  const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en&when=${days}d`
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(6000) })
     const text = await resp.text()
-    const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 4)
+    const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 10)
     return items.map(([, xml]) => ({
       title: xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || xml.match(/<title>(.*?)<\/title>/)?.[1] || '',
       link: xml.match(/<link>(.*?)<\/link>/)?.[1] || '',
       date: xml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '',
-    })).filter(a => a.title)
+    }))
+    .filter(a => a.title && (!a.date || new Date(a.date).getTime() >= cutoff))
+    .slice(0, 4)
   } catch { return [] }
 }
 
-async function scanChampionInterests(championId, days = 7) {
+async function scanChampionInterests(championId, days = 2) {
   const db = getDb()
   let champions = []
   if (championId) {
@@ -318,12 +321,13 @@ For the notification_message, write what will be sent to Rich's Telegram — mak
     description: `Scan recent news for a champion's registered interests and intelligence topics.
 Use when Rich asks things like "any news on Jeremy?", "what's happening with [topic]?", "scan my champions", or "intelligence update".
 Returns recent articles matched to the champion's interests. After reviewing them, propose relevant ones as triggers using propose_trigger, and suggest outreach angles.
+Default: last 48 hours only — the goal is to share breaking news before anyone else does. Only widen the window if Rich explicitly asks.
 If champion_id is omitted, scans all champions.`,
     input_schema: {
       type: 'object',
       properties: {
         champion_id: { type: 'string', description: 'Champion ID to scan (omit to scan all)' },
-        days: { type: 'number', description: 'How many days back to search (default 7)' },
+        days: { type: 'number', description: 'How many days back to search (default 2 = 48 hours)' },
       },
       required: [],
     },
