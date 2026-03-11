@@ -74,6 +74,15 @@ function getStageCriteria(championId) {
 
 export function addChampion(data) {
   const db = getDb()
+
+  // Dedup: return existing champion if same name + company already exists
+  if (data.name && data.company) {
+    const existing = db.prepare(
+      'SELECT id FROM champions WHERE LOWER(name) = LOWER(?) AND LOWER(company) = LOWER(?) AND archived = 0 LIMIT 1'
+    ).get(data.name.trim(), data.company.trim())
+    if (existing) return getChampion(existing.id)
+  }
+
   const id = uuidv4()
   const now = new Date().toISOString()
 

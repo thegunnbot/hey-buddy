@@ -375,12 +375,18 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={e => { setInput(e.target.value); saveDraft(e.target.value) }}
+            onChange={e => {
+              setInput(e.target.value)
+              saveDraft(e.target.value)
+              // Auto-grow
+              e.target.style.height = 'auto'
+              e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Ask me anything, or drop a file…"
             rows={1}
-            className="flex-1 resize-none rounded-xl px-3 py-2 text-sm max-h-32 focus:outline-none"
-            style={{ background: '#f0f0f0', border: '1px solid #e0e0e0', minHeight: '38px', color: '#0f1924' }}
+            className="flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none"
+            style={{ background: '#f0f0f0', border: '1px solid #e0e0e0', minHeight: '38px', maxHeight: '160px', overflowY: 'auto', color: '#0f1924' }}
           />
           <button
             onClick={() => handleSend(input)}
