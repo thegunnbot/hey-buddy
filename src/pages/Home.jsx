@@ -244,11 +244,11 @@ function PipelineCard({ champion, onClick }) {
       onMouseLeave={e => { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.boxShadow = 'none' }}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Avatar initials={champion.initials} name={champion.name} size="sm" />
-          <div>
-            <p className="text-sm font-semibold leading-tight" style={{ color: '#0f1924' }}>{champion.name}</p>
-            <p className="text-xs" style={{ color: '#848d9a' }}>{champion.company}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight truncate" style={{ color: '#0f1924' }}>{champion.name}</p>
+            <p className="text-xs truncate" style={{ color: '#848d9a' }}>{champion.company}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -265,7 +265,7 @@ function PipelineCard({ champion, onClick }) {
       )}
       {nextCriteria && (
         <div className="rounded-md px-2.5 py-1.5" style={{ background: '#ffffff' }}>
-          <p className="text-xs leading-snug" style={{ color: '#848d9a' }}>
+          <p className="text-xs leading-snug line-clamp-2" style={{ color: '#848d9a' }}>
             <span className="font-medium" style={{ color: '#505862' }}>Next: </span>{nextCriteria.label}
           </p>
         </div>
@@ -278,25 +278,27 @@ function PipelineSection({ title, stageList, champions, onChampionClick, network
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: '#848d9a' }}>{title}</h2>
-      <div className={clsx('grid gap-4', networkSection ? 'grid-cols-4' : 'grid-cols-4')}>
-        {stageList.map(stage => {
-          const sc = stageColours[stage] || stageColours.identified
-          const stageChampions = champions.filter(c => c.stage === stage)
-          return (
-            <div key={stage} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${sc.border}` }}>
-              <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: sc.header }}>
-                <StageTag stage={stage} />
-                <span className="text-xs font-medium" style={{ color: '#848d9a' }}>{stageChampions.length}</span>
+      <div className="overflow-x-auto pb-1">
+        <div className="flex gap-4" style={{ minWidth: `${stageList.length * 220}px` }}>
+          {stageList.map(stage => {
+            const sc = stageColours[stage] || stageColours.identified
+            const stageChampions = champions.filter(c => c.stage === stage)
+            return (
+              <div key={stage} className="rounded-xl overflow-hidden flex-1" style={{ border: `1px solid ${sc.border}`, minWidth: 200 }}>
+                <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: sc.header }}>
+                  <StageTag stage={stage} />
+                  <span className="text-xs font-medium" style={{ color: '#848d9a' }}>{stageChampions.length}</span>
+                </div>
+                <div className="p-2 space-y-2 min-h-20" style={{ background: '#ffffff' }}>
+                  {stageChampions.length === 0 && (
+                    <p className="text-xs text-center pt-4" style={{ color: '#c6c7c8' }}>Empty</p>
+                  )}
+                  {stageChampions.map(c => <PipelineCard key={c.id} champion={c} onClick={onChampionClick} />)}
+                </div>
               </div>
-              <div className="p-2 space-y-2 min-h-20" style={{ background: '#ffffff' }}>
-                {stageChampions.length === 0 && (
-                  <p className="text-xs text-center pt-4" style={{ color: '#c6c7c8' }}>Empty</p>
-                )}
-                {stageChampions.map(c => <PipelineCard key={c.id} champion={c} onClick={onChampionClick} />)}
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </section>
   )
