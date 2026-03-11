@@ -243,3 +243,20 @@ CREATE TABLE IF NOT EXISTS settings (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Intelligence scan results (persisted for UI feed)
+CREATE TABLE IF NOT EXISTS intelligence_items (
+  id TEXT PRIMARY KEY,
+  champion_id TEXT REFERENCES champions(id) ON DELETE CASCADE,
+  champion_name TEXT NOT NULL,
+  section TEXT NOT NULL,        -- interest|company|press
+  label TEXT NOT NULL,          -- e.g. "Westfield Specialty" or "Marine & Geopolitical Risk"
+  title TEXT NOT NULL,
+  link TEXT NOT NULL,
+  source TEXT,
+  pub_date TEXT,
+  scanned_at TEXT NOT NULL DEFAULT (datetime('now')),
+  dismissed INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_intelligence_items_champion ON intelligence_items(champion_id);
+CREATE INDEX IF NOT EXISTS idx_intelligence_items_scanned ON intelligence_items(scanned_at);

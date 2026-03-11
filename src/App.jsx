@@ -7,6 +7,7 @@ import Champions from './pages/Champions'
 import Methodology from './pages/Methodology'
 import Settings from './pages/Settings'
 import MeetBuddy from './pages/MeetBuddy'
+import Intelligence from './pages/Intelligence'
 import { fetchChampions } from './api'
 
 export default function App() {
@@ -14,6 +15,13 @@ export default function App() {
   const [selectedChampion, setSelectedChampion] = useState(null)
   const [champions, setChampions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [intelligenceCount, setIntelligenceCount] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/intelligence').then(r => r.ok ? r.json() : []).then(items => {
+      setIntelligenceCount(Array.isArray(items) ? items.length : 0)
+    }).catch(() => {})
+  }, [activeTab])
 
   const loadChampions = useCallback(async () => {
     try {
@@ -47,7 +55,7 @@ export default function App() {
   return (
     <PasswordGate>
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} champions={champions} />
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} champions={champions} intelligenceCount={intelligenceCount} />
       <main className="flex-1 overflow-hidden">
         {/* Home is always mounted — CSS-hidden when inactive to preserve chat state */}
         <div style={{ display: activeTab === 'home' ? '' : 'none', height: '100%', overflow: 'hidden' }}>
@@ -60,6 +68,12 @@ export default function App() {
             onSelectChampion={setSelectedChampion}
             onDataChanged={handleDataChanged}
           />
+        )}
+        {activeTab === 'intelligence' && (
+          <Intelligence onChampionClick={(id) => {
+            const c = champions.find(ch => ch.id === id)
+            if (c) { setSelectedChampion(c); setActiveTab('champions') }
+          }} />
         )}
         {activeTab === 'methodology' && <Methodology />}
         {activeTab === 'settings' && <Settings />}

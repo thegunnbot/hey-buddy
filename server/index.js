@@ -14,7 +14,7 @@ import { dirname, join } from 'path'
 import rateLimit from 'express-rate-limit'
 import { seedMockData, getHealthScore, computeHealthScore, listSubjects, archiveChampion, unarchiveChampion, listChampions, getChampionsByLocation, addPendingTrigger } from './db.js'
 import { startBot, sendTelegramMessage } from './bot.js'
-import { scanChampionInterests, formatDigest } from './intelligence.js'
+import { scanChampionInterests, formatDigest, listIntelligenceItems, dismissIntelligenceItem } from './intelligence.js'
 import { requireAuth } from './middleware/auth.js'
 import championsRouter from './routes/champions.js'
 import chatRouter from './routes/chat.js'
@@ -125,6 +125,33 @@ app.post('/api/champions/:id/health-score/refresh', (req, res) => {
 app.get('/api/subjects', (req, res) => {
   try { res.json(listSubjects()) }
   catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// Trigger scan from UI (authenticated user, no secret needed)
+app.post('/api/intelligence/run-scan', requireAuth, async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 2
+    const results = await scanChampionInterests(null, days)
+    const digest = formatDigest(results, days)
+    if (digest) await sendTelegramMessage(process.env.TELEGRAM_RICH_ID, digest, { parse_mode: 'Markdown' })
+    res.json({ ok: true, championsWithNews: results?.length ?? 0, sent: !!digest })
+  } catch (err) {
+    console.error('Intelligence scan error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Intelligence feed — list stored items
+app.get('/api/intelligence', requireAuth, (req, res) => {
+  const championId = req.query.champion_id || null
+  const dismissed = req.query.dismissed === 'true'
+  res.json(listIntelligenceItems({ limit: 200, championId, dismissed }))
+})
+
+// Dismiss an intelligence item
+app.post('/api/intelligence/:id/dismiss', requireAuth, (req, res) => {
+  dismissIntelligenceItem(req.params.id)
+  res.json({ ok: true })
 })
 
 // Intelligence scan — internal endpoint (protected by SCAN_SECRET)

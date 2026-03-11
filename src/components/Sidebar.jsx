@@ -1,14 +1,15 @@
 import clsx from 'clsx'
-import { LayoutDashboard, Users, BookOpen, Settings, Info } from 'lucide-react'
+import { LayoutDashboard, Users, BookOpen, Settings, Info, Zap } from 'lucide-react'
 
 const nav = [
   { id: 'home', label: 'Home', icon: LayoutDashboard },
   { id: 'champions', label: 'Champions', icon: Users },
+  { id: 'intelligence', label: 'Intelligence', icon: Zap },
   { id: 'methodology', label: 'Methodology', icon: BookOpen },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Sidebar({ activeTab, onTabChange, champions = [] }) {
+export default function Sidebar({ activeTab, onTabChange, champions = [], intelligenceCount = 0 }) {
   const overdueCount = champions.filter(c => c.health === 'red').length
   const actionCount = champions.filter(c => c.health !== 'green').length
 
@@ -40,6 +41,12 @@ export default function Sidebar({ activeTab, onTabChange, champions = [] }) {
               <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
                 style={{ background: '#59bbb7', color: '#0f1924' }}>
                 {actionCount}
+              </span>
+            )}
+            {id === 'intelligence' && intelligenceCount > 0 && (
+              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
+                style={{ background: '#59bbb7', color: '#0f1924' }}>
+                {intelligenceCount > 99 ? '99+' : intelligenceCount}
               </span>
             )}
           </button>

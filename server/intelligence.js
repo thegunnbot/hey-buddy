@@ -1,9 +1,10 @@
 /**
- * intelligence.js — shared scan, filter, and format logic
+ * intelligence.js — shared scan, filter, format, and persistence logic
  * Used by: routes/chat.js (on-demand tool) and /api/intelligence/scan (scheduled)
  */
 
 import { getDb } from './db.js'
+import { randomUUID } from 'crypto'
 
 const NOISE_PATTERNS = [
   /\bhiring\b/i, /\bjobs?\b/i, /\bcareers?\b/i, /\bapply now\b/i,
@@ -86,7 +87,49 @@ export async function scanChampionInterests(championId, days = 2) {
       results.push({ champion: champion.name, champion_id: champion.id, topics: sections })
     }
   }
+
+  // Persist to DB (skip duplicates by link)
+  if (results.length) {
+    const db = getDb()
+    const now = new Date().toISOString()
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO intelligence_items
+        (id, champion_id, champion_name, section, label, title, link, source, pub_date, scanned_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    // Use link as natural dedup key — add UNIQUE constraint via ignore
+    for (const r of results) {
+      for (const topic of r.topics) {
+        for (const a of topic.articles) {
+          // Check if already stored in last 7 days to avoid exact dupes
+          const existing = db.prepare(
+            `SELECT id FROM intelligence_items WHERE link = ? AND scanned_at > datetime('now', '-7 days')`
+          ).get(a.link)
+          if (!existing) {
+            insert.run(randomUUID(), r.champion_id, r.champion, topic.section, topic.label,
+              a.title, a.link, a.source || null, a.date || null, now)
+          }
+        }
+      }
+    }
+  }
+
   return results.length ? results : null
+}
+
+export function listIntelligenceItems({ limit = 100, championId = null, dismissed = false } = {}) {
+  const db = getDb()
+  let query = `SELECT * FROM intelligence_items WHERE dismissed = ?`
+  const params = [dismissed ? 1 : 0]
+  if (championId) { query += ` AND champion_id = ?`; params.push(championId) }
+  query += ` ORDER BY scanned_at DESC LIMIT ?`
+  params.push(limit)
+  return db.prepare(query).all(...params)
+}
+
+export function dismissIntelligenceItem(id) {
+  const db = getDb()
+  db.prepare(`UPDATE intelligence_items SET dismissed = 1 WHERE id = ?`).run(id)
 }
 
 export function championsInCity(city) {
