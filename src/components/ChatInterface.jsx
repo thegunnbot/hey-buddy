@@ -50,9 +50,11 @@ const FILE_TYPES = {
   pdf:   { icon: '📋', label: 'PDF',             extracting: 'Parsing PDF…',          done: (m) => `PDF parsed · ${m.wordCount?.toLocaleString()} words` },
   audio: { icon: '🎙️', label: 'Audio recording', extracting: 'Transcribing audio with Whisper…', done: (m) => `Audio transcribed · ${m.wordCount?.toLocaleString()} words` },
   video: { icon: '🎬', label: 'Video recording', extracting: 'Transcribing video audio with Whisper…', done: (m) => `Video transcribed · ${m.wordCount?.toLocaleString()} words` },
+  image: { icon: '🖼️', label: 'Image',           extracting: 'Reading image…',        done: (m) => `Image attached · ${m.name}` },
 }
 
-const ACCEPTED_EXTENSIONS = '.txt,.md,.markdown,.pdf,.doc,.docx,.mp3,.m4a,.ogg,.wav,.aac,.opus,.mp4,.mov,.webm,.avi'
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp'])
+const ACCEPTED_EXTENSIONS = '.txt,.md,.markdown,.pdf,.doc,.docx,.mp3,.m4a,.ogg,.wav,.aac,.opus,.mp4,.mov,.webm,.avi,.jpg,.jpeg,.png,.gif,.webp'
 
 // ── Subcomponents ──────────────────────────────────────────────────────────────
 
@@ -89,7 +91,10 @@ function FileAttachmentBadge({ file, onRemove }) {
   return (
     <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2"
       style={{ background: file.extracting ? 'rgba(78,112,248,0.08)' : 'rgba(89,187,183,0.1)', border: `1px solid ${file.extracting ? 'rgba(78,112,248,0.3)' : 'rgba(89,187,183,0.3)'}` }}>
-      <span className="text-sm">{meta.icon}</span>
+      {file.fileType === 'image' && file.dataUrl
+        ? <img src={file.dataUrl} alt={file.name} className="h-10 w-10 rounded object-cover shrink-0" />
+        : <span className="text-sm">{meta.icon}</span>
+      }
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate" style={{ color: '#0f1924' }}>{file.name}</p>
         <p className="text-xs" style={{ color: file.extracting ? '#4e70f8' : '#59bbb7' }}>
@@ -148,8 +153,30 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
   // ── File processing ──────────────────────────────────────────────────────────
 
   const processFile = useCallback(async (file) => {
-    // Detect type for immediate UI feedback
     const ext = file.name.split('.').pop()?.toLowerCase()
+
+    // Handle images client-side — no server upload needed
+    if (IMAGE_EXTENSIONS.has(ext)) {
+      setPendingFile({ name: file.name, fileType: 'image', extracting: true })
+      setShowPrompts(false)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const dataUrl = e.target.result
+        const base64 = dataUrl.split(',')[1]
+        const mediaType = file.type || 'image/jpeg'
+        setPendingFile({ name: file.name, fileType: 'image', dataUrl, base64, mediaType, extracting: false })
+        setInput(prev => prev || 'What can you see in this image?')
+        textareaRef.current?.focus()
+      }
+      reader.onerror = () => {
+        setPendingFile(null)
+        setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Couldn\'t read image file.' }])
+      }
+      reader.readAsDataURL(file)
+      return
+    }
+
+    // All other file types go through the server upload
     const extTypeMap = { txt: 'text', md: 'text', markdown: 'text', pdf: 'pdf', doc: 'docx', docx: 'docx', mp3: 'audio', m4a: 'audio', ogg: 'audio', wav: 'audio', aac: 'audio', opus: 'audio', mp4: 'video', mov: 'video', webm: 'video', avi: 'video' }
     const guessedType = extTypeMap[ext] || 'text'
 
@@ -171,7 +198,6 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
         charCount: result.charCount,
         extracting: false,
       })
-      // Pre-fill input if empty
       const defaultPrompt = result.fileType === 'audio' || result.fileType === 'video'
         ? `I've attached a recording. Please transcribe and extract any champion intelligence from it.`
         : `I've attached a file. Please process it and extract any champion intelligence.`
@@ -216,16 +242,19 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
     const content = text.trim()
     if (!content && !pendingFile) return
 
+    const isImage = pendingFile?.fileType === 'image'
     const userMsg = {
       role: 'user',
       content,
       attachment: pendingFile ? `${FILE_TYPES[pendingFile.fileType]?.icon || '📎'} ${pendingFile.name}` : null,
+      // Store image data for the API call (not re-sent in subsequent turns)
+      imageData: isImage ? { base64: pendingFile.base64, mediaType: pendingFile.mediaType } : null,
     }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput('')
     saveDraft('')
-    const fileText = pendingFile?.text || transcript
+    const fileText = isImage ? null : (pendingFile?.text || transcript)
     setPendingFile(null)
     setShowPrompts(false)
     setLoading(true)
@@ -251,7 +280,15 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
     }
 
     try {
-      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }))
+      const apiMessages = newMessages.map(m => ({
+        role: m.role,
+        content: m.imageData
+          ? [
+              { type: 'image', source: { type: 'base64', media_type: m.imageData.mediaType, data: m.imageData.base64 } },
+              { type: 'text', text: m.content || 'What can you see in this image?' },
+            ]
+          : m.content,
+      }))
       const result = await sendChatMessage(apiMessages, fileText)
       setMessages(prev => [...prev, { role: 'assistant', content: result.message || result.error || 'Something went wrong.' }])
       if (result.wroteData && onDataChanged) onDataChanged()
@@ -295,7 +332,7 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
           style={{ background: 'rgba(89,187,183,0.12)', border: '2px dashed #59bbb7' }}>
           <p className="text-2xl mb-2">📂</p>
           <p className="text-sm font-semibold" style={{ color: '#59bbb7' }}>Drop to process</p>
-          <p className="text-xs mt-1" style={{ color: '#848d9a' }}>Transcripts · Word · PDF · Audio · Video</p>
+          <p className="text-xs mt-1" style={{ color: '#848d9a' }}>Transcripts · Word · PDF · Audio · Video · Images</p>
         </div>
       )}
 
