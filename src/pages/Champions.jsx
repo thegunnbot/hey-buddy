@@ -304,58 +304,76 @@ function ChampionDetail({ champion, onArchiveToggle }) {
               )}
             </div>
 
-            {/* Active triggers */}
-            {champion.triggers?.some(t => t.status === 'pending' && t.trigger_type !== 'custom') && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Trophy className="h-4 w-4 text-emerald-500" />
-                  <h3 className="text-sm font-semibold text-gray-900">Active triggers</h3>
-                </div>
-                <div className="space-y-2">
-                  {champion.triggers.filter(t => t.status === 'pending' && t.trigger_type !== 'custom').map((t) => (
-                    <div key={t.id} className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
-                      <p className="text-sm font-medium text-gray-800">{t.title}</p>
-                      <p className="text-sm text-gray-600 mt-0.5">{t.description}</p>
-                      {t.suggested_message && (
-                        <p className="text-sm italic text-gray-500 mt-2 border-t border-emerald-200 pt-2">
-                          "{t.suggested_message}"
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Outstanding actions */}
+            {(() => {
+              const pending = (champion.triggers || []).filter(t => t.status === 'pending')
+              if (!pending.length) return null
 
-            {/* Custom triggers */}
-            {champion.triggers?.some(t => t.trigger_type === 'custom') && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Zap className="h-4 w-4 text-violet-500" />
-                  <h3 className="text-sm font-semibold text-gray-900">Custom triggers</h3>
+              function nextDue(t) {
+                if (t.fire_at) return new Date(t.fire_at)
+                if (!t.schedule) return null
+                const base = t.last_fired ? new Date(t.last_fired) : new Date(t.created_at)
+                const days = t.schedule === 'weekly' ? 7 : t.schedule === 'monthly' ? 30 : null
+                return days ? new Date(base.getTime() + days * 86400000) : null
+              }
+
+              const sorted = [...pending].sort((a, b) => {
+                const da = nextDue(a), db = nextDue(b)
+                if (da && db) return da - db
+                if (da) return -1
+                if (db) return 1
+                return 0
+              })
+
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Zap className="h-4 w-4" style={{ color: '#59bbb7' }} />
+                    <h3 className="text-sm font-semibold text-gray-900">Outstanding actions</h3>
+                    <span className="text-xs font-medium rounded-full px-2 py-0.5" style={{ background: 'rgba(89,187,183,0.12)', color: '#59bbb7' }}>
+                      {sorted.length}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {sorted.map(t => {
+                      const due = nextDue(t)
+                      const isOverdue = due && due < new Date()
+                      const isToday = due && due.toDateString() === new Date().toDateString()
+                      return (
+                        <div key={t.id} className="rounded-lg bg-white border border-gray-200 p-3 space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-900">{t.title}</p>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {t.schedule && (
+                                <span className="text-xs font-medium rounded-full px-2 py-0.5 capitalize" style={{ background: 'rgba(78,112,248,0.08)', color: '#4e70f8' }}>
+                                  {t.schedule}
+                                </span>
+                              )}
+                              {due && (
+                                <span className="text-xs font-medium rounded-full px-2 py-0.5" style={{
+                                  background: isOverdue ? 'rgba(238,108,91,0.1)' : isToday ? 'rgba(89,187,183,0.1)' : '#f5f5f5',
+                                  color: isOverdue ? '#ee6c5b' : isToday ? '#59bbb7' : '#848d9a'
+                                }}>
+                                  {isOverdue ? 'Overdue' : isToday
+                                    ? `Today ${due.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                    : due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {t.description && t.description !== t.title && (
+                            <p className="text-xs text-gray-500">{t.description}</p>
+                          )}
+                          {t.suggested_message && (
+                            <p className="text-xs italic text-gray-400 border-t border-gray-100 pt-1.5">"{t.suggested_message}"</p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {champion.triggers.filter(t => t.trigger_type === 'custom').map((t) => (
-                    <div key={t.id} className="rounded-lg bg-violet-50 border border-violet-200 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-gray-800">{t.title}</p>
-                        {t.schedule && (
-                          <span className="text-xs font-medium bg-violet-100 text-violet-700 rounded-full px-2 py-0.5 capitalize shrink-0">
-                            {t.schedule}
-                          </span>
-                        )}
-                      </div>
-                      {t.description && <p className="text-sm text-gray-600 mt-0.5">{t.description}</p>}
-                      {t.suggested_message && (
-                        <p className="text-sm italic text-gray-500 mt-2 border-t border-violet-200 pt-2">
-                          "{t.suggested_message}"
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              )
+            })()}
           </>
         )}
 
