@@ -5,8 +5,56 @@ import {
   addProfessionalWin, confirmProfessionalWin, addInteraction,
   updateStageCriteria, addTrigger, updateChampion,
   addPendingTrigger, listPendingTriggers, computeHealthScore, getHealthScore,
-  getUserProfile, listToneSamples, scheduleNotification,
+  getUserProfile, listToneSamples, scheduleNotification, getDb,
 } from '../db.js'
+
+async function fetchNewsForTopic(topic, days = 7) {
+  const query = encodeURIComponent(`${topic} ${days <= 3 ? 'today' : days <= 7 ? 'this week' : `last ${days} days`}`)
+  const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) })
+    const text = await resp.text()
+    const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 4)
+    return items.map(([, xml]) => ({
+      title: xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || xml.match(/<title>(.*?)<\/title>/)?.[1] || '',
+      link: xml.match(/<link>(.*?)<\/link>/)?.[1] || '',
+      date: xml.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '',
+    })).filter(a => a.title)
+  } catch { return [] }
+}
+
+async function scanChampionInterests(championId, days = 7) {
+  const db = getDb()
+  let champions = []
+  if (championId) {
+    const c = db.prepare('SELECT id, name FROM champions WHERE id = ?').get(championId)
+    if (c) champions = [c]
+  } else {
+    champions = db.prepare('SELECT id, name FROM champions WHERE archived = 0').all()
+  }
+
+  const results = []
+  for (const champion of champions) {
+    const interests = db.prepare(`
+      SELECT s.id, s.name, s.type FROM champion_subjects cs
+      JOIN subjects s ON s.id = cs.subject_id
+      WHERE cs.champion_id = ?
+    `).all(champion.id)
+
+    if (!interests.length) continue
+    const championArticles = []
+    for (const interest of interests) {
+      const articles = await fetchNewsForTopic(interest.name, days)
+      if (articles.length) {
+        championArticles.push({ interest: interest.name, articles })
+      }
+    }
+    if (championArticles.length) {
+      results.push({ champion: champion.name, champion_id: champion.id, topics: championArticles })
+    }
+  }
+  return results.length ? results : [{ message: 'No news found for any active interests in the past ' + days + ' days.' }]
+}
 
 const router = Router()
 
@@ -265,6 +313,21 @@ For the notification_message, write what will be sent to Rich's Telegram — mak
       required: ['title', 'notification_message', 'fire_at'],
     },
   },
+  {
+    name: 'scan_champion_interests',
+    description: `Scan recent news for a champion's registered interests and intelligence topics.
+Use when Rich asks things like "any news on Jeremy?", "what's happening with [topic]?", "scan my champions", or "intelligence update".
+Returns recent articles matched to the champion's interests. After reviewing them, propose relevant ones as triggers using propose_trigger, and suggest outreach angles.
+If champion_id is omitted, scans all champions.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        champion_id: { type: 'string', description: 'Champion ID to scan (omit to scan all)' },
+        days: { type: 'number', description: 'How many days back to search (default 7)' },
+      },
+      required: [],
+    },
+  },
 ]
 
 export function executeTool(name, input) {
@@ -312,6 +375,8 @@ function _executeToolInner(name, input) {
       return getHealthScore(input.champion_id)
     case 'list_pending_triggers':
       return listPendingTriggers()
+    case 'scan_champion_interests':
+      return scanChampionInterests(input.champion_id || null, input.days || 7)
     case 'schedule_notification':
       return scheduleNotification({
         championId: input.champion_id || null,
@@ -391,7 +456,7 @@ ${transcript}
     while (true) {
       response = await client.messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
+        max_tokens: 4096,
         system: buildSystemPrompt(ownerId),
         tools: TOOLS,
         messages: msgHistory,
@@ -403,7 +468,7 @@ ${transcript}
         const toolResults = []
         for (const block of response.content) {
           if (block.type === 'tool_use') {
-            const result = executeTool(block.name, block.input)
+            const result = await Promise.resolve(executeTool(block.name, block.input))
             toolResults.push({
               type: 'tool_result',
               tool_use_id: block.id,
