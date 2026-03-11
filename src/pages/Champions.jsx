@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { createChampion } from '../api'
 import {
   Search, Linkedin, Phone, MessageSquare,
   CheckCircle, Circle, ExternalLink,
@@ -1029,6 +1030,25 @@ export default function Champions({ champions = [], selectedChampion, onSelectCh
   const [stageFilter, setStageFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [showArchived, setShowArchived] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', company: '', role: '', type: 'prospect', stage: 'identified' })
+  const [addSaving, setAddSaving] = useState(false)
+
+  async function handleAddChampion(e) {
+    e.preventDefault()
+    if (!addForm.name.trim()) return
+    setAddSaving(true)
+    try {
+      await createChampion(addForm)
+      setShowAddModal(false)
+      setAddForm({ name: '', company: '', role: '', type: 'prospect', stage: 'identified' })
+      onDataChanged && onDataChanged()
+    } catch (err) {
+      console.error('Failed to add champion', err)
+    } finally {
+      setAddSaving(false)
+    }
+  }
 
   const filtered = champions.filter((c) => {
     const matchSearch =
@@ -1059,7 +1079,10 @@ export default function Champions({ champions = [], selectedChampion, onSelectCh
                 <Archive className="h-3 w-3" />
                 {showArchived ? 'Archived' : 'Archive'}
               </button>
-              <button className="flex items-center gap-1 rounded-lg bg-hx-navy px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-colors">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-1 rounded-lg bg-hx-navy px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-colors"
+              >
                 <Plus className="h-3.5 w-3.5" /> Add
               </button>
             </div>
@@ -1132,6 +1155,93 @@ export default function Champions({ champions = [], selectedChampion, onSelectCh
           </div>
         )}
       </div>
+
+      {/* Add Champion Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-gray-900 mb-4">Add Champion</h2>
+            <form onSubmit={handleAddChampion} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Name <span className="text-red-400">*</span></label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={addForm.name}
+                  onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Full name"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hx-teal/30"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Company</label>
+                <input
+                  type="text"
+                  value={addForm.company}
+                  onChange={e => setAddForm(f => ({ ...f, company: e.target.value }))}
+                  placeholder="Company"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hx-teal/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+                <input
+                  type="text"
+                  value={addForm.role}
+                  onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}
+                  placeholder="Job title"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hx-teal/30"
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                  <select
+                    value={addForm.type}
+                    onChange={e => setAddForm(f => ({ ...f, type: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hx-teal/30"
+                  >
+                    <option value="prospect">Prospect</option>
+                    <option value="customer">Customer</option>
+                    <option value="network">Network</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Stage</label>
+                  <select
+                    value={addForm.stage}
+                    onChange={e => setAddForm(f => ({ ...f, stage: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hx-teal/30"
+                  >
+                    <option value="identified">Identified</option>
+                    <option value="building">Building</option>
+                    <option value="test">Test</option>
+                    <option value="leverage">Leverage</option>
+                    <option value="nurture">Nurture</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addSaving || !addForm.name.trim()}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-white bg-hx-navy hover:opacity-90 disabled:opacity-50"
+                >
+                  {addSaving ? 'Adding…' : 'Add Champion'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
