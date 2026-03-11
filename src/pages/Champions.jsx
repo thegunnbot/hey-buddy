@@ -3,7 +3,7 @@ import {
   Search, Linkedin, Phone, MessageSquare,
   CheckCircle, Circle, ExternalLink,
   Trophy, Briefcase, User, Clock, Plus, Zap,
-  Archive, ArchiveRestore, MapPin, Pencil, Sparkles, Trash2
+  Archive, ArchiveRestore, MapPin, Pencil, Sparkles, Trash2, Mail
 } from 'lucide-react'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
@@ -209,6 +209,10 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
       personal_contact: champion.personal_contact || champion.personalContact || '',
       location_city: champion.location_city || '',
       location_country: champion.location_country || '',
+      linkedin_url: champion.linkedin_url || champion.linkedinUrl || '',
+      email: champion.email || '',
+      sf_contact_id: champion.sf_contact_id || '',
+      sf_account_id: champion.sf_account_id || '',
     })
     setEditingFields(true)
   }
@@ -270,6 +274,18 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                       <input value={fieldValues.location_country} onChange={e => setFieldValues(v => ({ ...v, location_country: e.target.value }))}
                         placeholder="Country" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-28 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
                     </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <input value={fieldValues.linkedin_url} onChange={e => setFieldValues(v => ({ ...v, linkedin_url: e.target.value }))}
+                        placeholder="LinkedIn URL" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-56 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                      <input value={fieldValues.email} onChange={e => setFieldValues(v => ({ ...v, email: e.target.value }))}
+                        placeholder="Email" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-44 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <input value={fieldValues.sf_contact_id} onChange={e => setFieldValues(v => ({ ...v, sf_contact_id: e.target.value }))}
+                        placeholder="Salesforce Contact ID" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-48 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                      <input value={fieldValues.sf_account_id} onChange={e => setFieldValues(v => ({ ...v, sf_account_id: e.target.value }))}
+                        placeholder="Salesforce Account ID" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-48 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                    </div>
                     <div className="flex gap-2">
                       <button onClick={saveFields} className="rounded px-3 py-1 text-xs font-medium text-white" style={{ background: '#0f1924' }}>Save</button>
                       <button onClick={() => setEditingFields(false)} className="rounded px-3 py-1 text-xs font-medium text-gray-600 border border-gray-300">Cancel</button>
@@ -298,9 +314,9 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
             </div>
             {!editingFields && (
               <div className="flex items-center gap-3 mt-3">
-                {champion.linkedinUrl && (
+                {(champion.linkedin_url || champion.linkedinUrl) && (
                   <a
-                    href={champion.linkedinUrl}
+                    href={champion.linkedin_url || champion.linkedinUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1.5 text-xs font-medium text-hx-teal hover:text-hx-teal transition-colors"
@@ -309,6 +325,22 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                     LinkedIn
                     <ExternalLink className="h-3 w-3" />
                   </a>
+                )}
+                {champion.email && (
+                  <a href={`mailto:${champion.email}`} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700">
+                    <Mail className="h-3.5 w-3.5" />
+                    {champion.email}
+                  </a>
+                )}
+                {champion.sf_contact_id && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-400" title="Salesforce Contact ID">
+                    SF Contact: <span className="font-mono">{champion.sf_contact_id}</span>
+                  </span>
+                )}
+                {champion.sf_account_id && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-400" title="Salesforce Account ID">
+                    SF Account: <span className="font-mono">{champion.sf_account_id}</span>
+                  </span>
                 )}
                 {champion.personalContact && (
                   <span className="flex items-center gap-1.5 text-xs text-gray-500">
