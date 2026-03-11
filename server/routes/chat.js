@@ -30,33 +30,62 @@ async function scanChampionInterests(championId, days = 2) {
   const db = getDb()
   let champions = []
   if (championId) {
-    const c = db.prepare('SELECT id, name FROM champions WHERE id = ?').get(championId)
+    const c = db.prepare('SELECT id, name, company, role, location_city, location_country FROM champions WHERE id = ?').get(championId)
     if (c) champions = [c]
   } else {
-    champions = db.prepare('SELECT id, name FROM champions WHERE archived = 0').all()
+    champions = db.prepare('SELECT id, name, company, role, location_city, location_country FROM champions WHERE archived = 0').all()
   }
 
   const results = []
   for (const champion of champions) {
+    const sections = []
+
+    // 1. Registered interests
     const interests = db.prepare(`
       SELECT s.id, s.name, s.type FROM champion_subjects cs
       JOIN subjects s ON s.id = cs.subject_id
       WHERE cs.champion_id = ?
     `).all(champion.id)
-
-    if (!interests.length) continue
-    const championArticles = []
     for (const interest of interests) {
       const articles = await fetchNewsForTopic(interest.name, days)
-      if (articles.length) {
-        championArticles.push({ interest: interest.name, articles })
-      }
+      if (articles.length) sections.push({ section: 'interest', label: interest.name, articles })
     }
-    if (championArticles.length) {
-      results.push({ champion: champion.name, champion_id: champion.id, topics: championArticles })
+
+    // 2. Company news
+    if (champion.company) {
+      const articles = await fetchNewsForTopic(champion.company, days)
+      if (articles.length) sections.push({ section: 'company', label: `${champion.company} company news`, articles })
+    }
+
+    // 3. Press mentions
+    if (champion.name && champion.company) {
+      const query = `"${champion.name}" "${champion.company}"`
+      const articles = await fetchNewsForTopic(query, days)
+      if (articles.length) sections.push({ section: 'press', label: `${champion.name} press mentions`, articles })
+    }
+
+    if (sections.length) {
+      results.push({ champion: champion.name, champion_id: champion.id, topics: sections })
     }
   }
   return results.length ? results : [{ message: 'No news found for any active interests in the past ' + days + ' days.' }]
+}
+
+function championsInCity(city) {
+  const db = getDb()
+  const normalised = city.trim().toLowerCase()
+  const champions = db.prepare(
+    `SELECT id, name, company, role, stage, last_contact_date FROM champions WHERE archived = 0 AND lower(location_city) LIKE ?`
+  ).all(`%${normalised}%`)
+  if (!champions.length) return { city, message: `No champions found in ${city}.`, champions: [] }
+  return {
+    city,
+    message: `Found ${champions.length} champion(s) in ${city}. Consider reaching out before or during your visit.`,
+    champions: champions.map(c => ({
+      id: c.id, name: c.name, company: c.company, role: c.role,
+      stage: c.stage, last_contact_date: c.last_contact_date,
+    })),
+  }
 }
 
 const router = Router()
@@ -123,6 +152,8 @@ When Rich gives you information or asks questions, you can:
 - **Propose interests** using propose_trigger — do this proactively when you spot topics, passions, or events a champion cares about (sport, hobbies, market topics, geopolitical interests). These become intelligence topics that will drive proactive news alerts in the future. Never silently ignore a potential interest.
 - **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests.
 - **Schedule reminders** using schedule_notification — when Rich asks to be reminded about something at a specific time, schedule it as a Telegram push. Always confirm the exact datetime before creating.
+- **Scan intelligence** using scan_champion_interests — covers registered interests, company news (earnings, M&A, announcements), and press mentions of the champion by name. Always suggest outreach angles for anything relevant.
+- **Travel matching** using champions_in_city — whenever Rich mentions travelling to or visiting a city, immediately call this to surface any champions based there and suggest reaching out before the trip.
 - Update stage criteria when a criterion has been met
 - Parse call transcripts to extract champion intel — always propose triggers for any interests you identify
 - Get a champion's current health score breakdown
@@ -133,6 +164,9 @@ When parsing transcripts or reviewing interactions:
 2. Notice changes in tone or engagement — flag them
 3. Spot professional milestones (promotion, new project, board pressure) — log them
 4. If you identify a subject (e.g. England Rugby) that might apply to other champions based on what you know, say so
+
+## Travel matching
+Whenever Rich mentions any travel — "I'm going to London", "heading to Chicago next week", "I'll be in NYC" — immediately call champions_in_city with that city. Surface the results and suggest he reaches out to relevant champions before or during the trip. Don't wait to be asked.
 
 ## When to save data — important
 **Save immediately** (no confirmation needed):
@@ -318,9 +352,10 @@ For the notification_message, write what will be sent to Rich's Telegram — mak
   },
   {
     name: 'scan_champion_interests',
-    description: `Scan recent news for a champion's registered interests and intelligence topics.
+    description: `Scan recent news for a champion's registered interests, company news, and press mentions.
 Use when Rich asks things like "any news on Jeremy?", "what's happening with [topic]?", "scan my champions", or "intelligence update".
-Returns recent articles matched to the champion's interests. After reviewing them, propose relevant ones as triggers using propose_trigger, and suggest outreach angles.
+Returns recent articles across three dimensions: (1) registered interest topics, (2) company news (earnings, M&A, major announcements), (3) press mentions of the champion by name.
+After reviewing results, propose relevant ones as triggers using propose_trigger and suggest outreach angles.
 Default: last 48 hours only — the goal is to share breaking news before anyone else does. Only widen the window if Rich explicitly asks.
 If champion_id is omitted, scans all champions.`,
     input_schema: {
@@ -330,6 +365,18 @@ If champion_id is omitted, scans all champions.`,
         days: { type: 'number', description: 'How many days back to search (default 2 = 48 hours)' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'champions_in_city',
+    description: `Find champions located in a given city. Use when Rich mentions travel plans or asks "who do I know in [city]?".
+If Rich says they are visiting or travelling to a city, call this to surface relevant champions and suggest proactive outreach before the trip.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'City name to search for (e.g. "New York", "London", "Chicago")' },
+      },
+      required: ['city'],
     },
   },
 ]
@@ -380,7 +427,9 @@ function _executeToolInner(name, input) {
     case 'list_pending_triggers':
       return listPendingTriggers()
     case 'scan_champion_interests':
-      return scanChampionInterests(input.champion_id || null, input.days || 7)
+      return scanChampionInterests(input.champion_id || null, input.days || 2)
+    case 'champions_in_city':
+      return championsInCity(input.city)
     case 'schedule_notification':
       return scheduleNotification({
         championId: input.champion_id || null,
