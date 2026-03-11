@@ -31,6 +31,7 @@ function buildActions(champions) {
   const actions = []
   const today = new Date()
   for (const c of champions) {
+    if (c.archived) continue
     if (!c.last_contact_date) continue
     const daysSince = Math.floor((today - new Date(c.last_contact_date)) / 86400000)
     const cadence = c.deal_status === 'post-sfo' ? 14 : 30
@@ -308,8 +309,8 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
   // Track actioned cards so they disappear immediately
   const [dismissedActionIds, setDismissedActionIds] = useState(new Set())
 
-  const prospectCustomer = champions.filter(c => c.type !== 'network')
-  const network = champions.filter(c => c.type === 'network')
+  const prospectCustomer = champions.filter(c => c.type !== 'network' && !c.archived)
+  const network = champions.filter(c => c.type === 'network' && !c.archived)
   const actions = buildActions(champions).filter(a => !dismissedActionIds.has(a.id))
   function handleActionTaken(actionId) {
     setDismissedActionIds(prev => new Set([...prev, actionId]))

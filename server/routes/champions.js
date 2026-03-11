@@ -3,6 +3,7 @@ import {
   listChampions, getChampion, addChampion, updateChampion,
   addPersonalWin, addProfessionalWin, confirmProfessionalWin,
   addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger,
+  findOrCreateSubject, linkChampionToSubject,
 } from '../db.js'
 
 const router = Router()
@@ -63,6 +64,18 @@ router.patch('/triggers/:triggerId/status', (req, res) => {
 router.patch('/triggers/:triggerId', (req, res) => {
   updateTrigger(req.params.triggerId, req.body)
   res.json({ ok: true })
+})
+
+router.post('/:id/interests', (req, res) => {
+  try {
+    const { name, type = 'topic', evidence = '' } = req.body
+    if (!name) return res.status(400).json({ error: 'name is required' })
+    const subject = findOrCreateSubject(name, type)
+    linkChampionToSubject(req.params.id, subject.id, 'explicit', evidence)
+    res.status(201).json({ ok: true, subject })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router
