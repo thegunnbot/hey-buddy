@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import PasswordGate from './components/PasswordGate'
 import Sidebar from './components/Sidebar'
 import FloatingChat from './components/FloatingChat'
 import Home from './pages/Home'
@@ -44,12 +45,14 @@ export default function App() {
   }
 
   return (
+    <PasswordGate>
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} champions={champions} />
       <main className="flex-1 overflow-hidden">
-        {activeTab === 'home' && (
+        {/* Home is always mounted — CSS-hidden when inactive to preserve chat state */}
+        <div style={{ display: activeTab === 'home' ? '' : 'none', height: '100%', overflow: 'hidden' }}>
           <Home champions={champions} loading={loading} onChampionClick={handleChampionClick} onDataChanged={handleDataChanged} />
-        )}
+        </div>
         {activeTab === 'champions' && (
           <Champions
             champions={champions}
@@ -64,5 +67,6 @@ export default function App() {
       </main>
       {activeTab !== 'home' && <FloatingChat onDataChanged={handleDataChanged} />}
     </div>
+    </PasswordGate>
   )
 }

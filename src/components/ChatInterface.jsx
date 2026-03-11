@@ -13,6 +13,35 @@ const SUGGESTED_PROMPTS = [
 
 const HEY_BUDDY_EASTER_EGG = `I'm not your buddy, friend. 🇨🇦\n\nhttps://youtu.be/m1JakODvYhA?si=X7fqez78mIIB9EgA`
 
+const DRAFT_KEY = 'hb_draft'
+const HISTORY_KEY = 'hb_chat_history'
+const HISTORY_MAX = 50 // max messages to persist
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveHistory(messages) {
+  try {
+    const trimmed = messages.slice(-HISTORY_MAX)
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed))
+  } catch {}
+}
+
+function loadDraft() {
+  try { return localStorage.getItem(DRAFT_KEY) || '' } catch { return '' }
+}
+
+function saveDraft(text) {
+  try {
+    if (text) localStorage.setItem(DRAFT_KEY, text)
+    else localStorage.removeItem(DRAFT_KEY)
+  } catch {}
+}
+
 // ── File type config ───────────────────────────────────────────────────────────
 
 const FILE_TYPES = {
@@ -81,8 +110,8 @@ function FileAttachmentBadge({ file, onRemove }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function ChatInterface({ onDataChanged, compact = false, feedbackInjection = null }) {
-  const [messages, setMessages] = useState([])
-  const [input, setInput] = useState('')
+  const [messages, setMessages] = useState(() => loadHistory())
+  const [input, setInput] = useState(() => loadDraft())
   const [loading, setLoading] = useState(false)
   const [pendingFile, setPendingFile] = useState(null) // { name, text, fileType, wordCount, extracting }
   const [showPrompts, setShowPrompts] = useState(true)
@@ -96,6 +125,16 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
     const el = messagesRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, loading])
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) saveHistory(messages)
+  }, [messages])
+
+  // Show prompts only if no history
+  useEffect(() => {
+    if (messages.length > 0) setShowPrompts(false)
+  }, [])
 
   // Feedback injection from action card copies
   useEffect(() => {
@@ -185,6 +224,7 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput('')
+    saveDraft('')
     const fileText = pendingFile?.text || transcript
     setPendingFile(null)
     setShowPrompts(false)
@@ -335,7 +375,7 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => { setInput(e.target.value); saveDraft(e.target.value) }}
             onKeyDown={handleKeyDown}
             placeholder="Ask me anything, or drop a file…"
             rows={1}

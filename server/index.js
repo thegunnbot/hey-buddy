@@ -23,6 +23,7 @@ import feedbackRouter from './routes/feedback.js'
 import usersRouter from './routes/users.js'
 import profileRouter from './routes/profile.js'
 import settingsRouter from './routes/settings.js'
+import authRouter from './routes/auth.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -46,6 +47,9 @@ const chatLimiter = rateLimit({
 })
 app.use('/api/', apiLimiter)
 app.use('/api/chat', chatLimiter)
+
+// Auth route — public (no requireAuth)
+app.use('/api/auth', authRouter)
 
 // API routes — all protected by auth middleware (no-op locally, Auth0 JWT in production)
 app.use('/api/champions', requireAuth, championsRouter)
