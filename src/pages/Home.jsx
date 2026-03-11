@@ -1,5 +1,6 @@
-import { AlertCircle, Clock, Zap, Trophy, MessageSquare, Copy, Loader2, Mail, Pencil } from 'lucide-react'
+import { AlertCircle, Clock, Zap, Trophy, MessageSquare, Copy, Loader2, Mail, Pencil, Bug, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import FeedbackForm from '../components/FeedbackForm'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
 import HealthDot from '../components/HealthDot'
@@ -314,6 +315,15 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
     setDismissedActionIds(prev => new Set([...prev, actionId]))
   }
 
+  const [chatMode, setChatMode] = useState('chat') // 'chat' | 'feedback'
+  const [chatKey, setChatKey] = useState(0)
+
+  function clearChat() {
+    try { localStorage.removeItem('hb_chat_history'); localStorage.removeItem('hb_draft') } catch {}
+    setChatKey(k => k + 1)
+    setChatMode('chat')
+  }
+
   // Inject feedback prompt into chat when user copies a message
   const [feedbackInjection, setFeedbackInjection] = useState(null)
 
@@ -331,7 +341,40 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
         </div>
 
         {/* Chat */}
-        <ChatInterface onDataChanged={onDataChanged} feedbackInjection={feedbackInjection} />
+        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #e0e0e0' }}>
+          {/* Chat header */}
+          <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#0f1924' }}>
+            <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: '#1c2c3b' }}>
+              <button
+                onClick={() => setChatMode('chat')}
+                className="text-xs font-medium px-2.5 py-1 rounded-md transition-colors"
+                style={{ background: chatMode === 'chat' ? '#28323f' : 'transparent', color: chatMode === 'chat' ? '#fff' : '#848d9a' }}
+              >
+                Chat
+              </button>
+              <button
+                onClick={() => setChatMode('feedback')}
+                className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-md transition-colors"
+                style={{ background: chatMode === 'feedback' ? '#28323f' : 'transparent', color: chatMode === 'feedback' ? '#ee6c5b' : '#848d9a' }}
+              >
+                <Bug className="h-3 w-3" /> Feedback
+              </button>
+            </div>
+            <button
+              onClick={clearChat}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-md transition-colors"
+              style={{ color: '#848d9a' }}
+              title="Clear chat history"
+            >
+              <Trash2 className="h-3 w-3" /> Clear
+            </button>
+          </div>
+          {/* Content */}
+          {chatMode === 'chat'
+            ? <ChatInterface key={chatKey} onDataChanged={onDataChanged} feedbackInjection={feedbackInjection} />
+            : <FeedbackForm submittedBy="rich" onClose={() => setChatMode('chat')} />
+          }
+        </div>
 
         {/* Pending trigger proposals */}
         <PendingTriggers onResolved={onDataChanged} />
