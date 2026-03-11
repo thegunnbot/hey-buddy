@@ -3,7 +3,7 @@ import {
   Search, Linkedin, Phone, MessageSquare,
   CheckCircle, Circle, ExternalLink,
   Trophy, Briefcase, User, Clock, Plus, Zap,
-  Archive, ArchiveRestore, MapPin, Pencil, Sparkles
+  Archive, ArchiveRestore, MapPin, Pencil, Sparkles, Trash2
 } from 'lucide-react'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
@@ -122,6 +122,8 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
   const [triggerEditValues, setTriggerEditValues] = useState({})
   const [addingSection, setAddingSection] = useState(null)
   const [formValues, setFormValues] = useState({})
+  const [editingItemId, setEditingItemId] = useState(null)
+  const [editValues, setEditValues] = useState({})
 
   function openAddForm(section, defaults = {}) {
     setAddingSection(section)
@@ -454,17 +456,68 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                   <div className="flex flex-wrap gap-2">
                     {champion.interests.map(interest => (
                       <div key={interest.id}
-                        className="group relative rounded-lg px-3 py-2 text-xs"
+                        className="rounded-lg px-3 py-2 text-xs flex items-center gap-1.5"
                         style={{ background: 'rgba(73,222,255,0.08)', border: '1px solid rgba(73,222,255,0.25)' }}
                         title={interest.evidence}
                       >
                         <span className="font-medium" style={{ color: '#0f1924' }}>{interest.name}</span>
                         {interest.type && interest.type !== 'topic' && (
-                          <span className="ml-1.5" style={{ color: '#848d9a' }}>· {interest.type}</span>
+                          <span style={{ color: '#848d9a' }}>· {interest.type}</span>
                         )}
+                        <button
+                          onClick={() => { setEditingItemId(`interest-${interest.id}`); setEditValues({ evidence: interest.evidence || '' }) }}
+                          className="ml-1 rounded hover:bg-white/50 transition-colors"
+                          title="Edit evidence"
+                        >
+                          <Pencil className="h-3.5 w-3.5" style={{ color: '#848d9a' }} />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await fetch(`/api/champions/${champion.id}/interests/${interest.id}`, { method: 'DELETE' })
+                            if (onDataChanged) onDataChanged()
+                          }}
+                          className="rounded hover:bg-white/50 transition-colors"
+                          title="Remove interest"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" style={{ color: '#848d9a' }} />
+                        </button>
                       </div>
                     ))}
                   </div>
+                  {/* Inline edit form for interest evidence */}
+                  {champion.interests.map(interest => editingItemId === `interest-${interest.id}` && (
+                    <div key={`edit-${interest.id}`} className="rounded-lg p-3 space-y-2 mt-2" style={{ background: '#f9f9f9', border: '1px solid #e0e0e0' }}>
+                      <p className="text-xs font-medium" style={{ color: '#0f1924' }}>Edit evidence for <strong>{interest.name}</strong></p>
+                      <textarea
+                        value={editValues.evidence || ''}
+                        onChange={e => setEditValues(v => ({ ...v, evidence: e.target.value }))}
+                        placeholder="Why this is relevant — optional"
+                        rows={2}
+                        className="rounded-lg px-3 py-2 text-sm w-full resize-none"
+                        style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            await fetch(`/api/champions/${champion.id}/interests`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ name: interest.name, type: interest.type, evidence: editValues.evidence }),
+                            })
+                            setEditingItemId(null)
+                            if (onDataChanged) onDataChanged()
+                          }}
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                          style={{ background: '#0f1924', color: '#59bbb7' }}
+                        >Save</button>
+                        <button
+                          onClick={() => setEditingItemId(null)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                          style={{ background: '#fff', color: '#848d9a', border: '1px solid #e0e0e0' }}
+                        >Cancel</button>
+                      </div>
+                    </div>
+                  ))}
                   <p className="text-xs mt-2" style={{ color: '#c0c0c0' }}>
                     These topics will drive proactive intelligence alerts when relevant news breaks.
                   </p>
@@ -508,12 +561,72 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
               ) : (
                 <div className="space-y-2">
                   {champion.personalWins.map((pw) => (
-                    <div key={pw.id} className="flex items-start gap-2.5 rounded-lg bg-white border border-gray-200 p-3">
-                      <span className="text-lg leading-none">{pw.emoji}</span>
-                      <div>
-                        <p className="text-sm text-gray-800">{pw.description}</p>
-                        <p className="text-xs text-gray-400 capitalize mt-0.5">{pw.category}</p>
-                      </div>
+                    <div key={pw.id} className="rounded-lg bg-white border border-gray-200 p-3">
+                      {editingItemId === `personal-win-${pw.id}` ? (
+                        <div className="space-y-2" style={{ background: '#f9f9f9', borderRadius: '0.5rem', padding: '0.5rem' }}>
+                          <textarea
+                            value={editValues.description ?? pw.description}
+                            onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))}
+                            rows={3}
+                            className="rounded-lg px-3 py-2 text-sm w-full resize-none"
+                            style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }}
+                          />
+                          <input
+                            type="date"
+                            value={editValues.date_noted ?? (pw.date_noted ? pw.date_noted.slice(0, 10) : '')}
+                            onChange={e => setEditValues(v => ({ ...v, date_noted: e.target.value }))}
+                            className="rounded-lg px-3 py-2 text-sm w-full"
+                            style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                await fetch(`/api/champions/personal-wins/${pw.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ description: editValues.description ?? pw.description, date_noted: editValues.date_noted ?? pw.date_noted }),
+                                })
+                                setEditingItemId(null)
+                                if (onDataChanged) onDataChanged()
+                              }}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                              style={{ background: '#0f1924', color: '#59bbb7' }}
+                            >Save</button>
+                            <button
+                              onClick={() => setEditingItemId(null)}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                              style={{ background: '#fff', color: '#848d9a', border: '1px solid #e0e0e0' }}
+                            >Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-lg leading-none">{pw.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-800">{pw.description}</p>
+                            <p className="text-xs text-gray-400 capitalize mt-0.5">{pw.category}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => { setEditingItemId(`personal-win-${pw.id}`); setEditValues({ description: pw.description, date_noted: pw.date_noted ? pw.date_noted.slice(0, 10) : '' }) }}
+                              className="p-1 rounded hover:bg-gray-100 transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" style={{ color: '#848d9a' }} />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await fetch(`/api/champions/personal-wins/${pw.id}`, { method: 'DELETE' })
+                                if (onDataChanged) onDataChanged()
+                              }}
+                              className="p-1 rounded hover:bg-gray-100 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" style={{ color: '#848d9a' }} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -561,20 +674,83 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                 <div className="space-y-2">
                   {champion.professionalWins.map((pw) => (
                     <div key={pw.id} className="rounded-lg bg-white border border-gray-200 p-3">
-                      <p className="text-sm text-gray-800">{pw.description}</p>
-                      <div className="flex items-center gap-1.5 mt-2">
-                        {pw.confirmed ? (
-                          <>
-                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                            <span className="text-xs text-emerald-600 font-medium">Explicitly confirmed</span>
-                          </>
-                        ) : (
-                          <>
-                            <Circle className="h-3.5 w-3.5 text-gray-300" />
-                            <span className="text-xs text-gray-400">Not yet confirmed</span>
-                          </>
-                        )}
-                      </div>
+                      {editingItemId === `pro-win-${pw.id}` ? (
+                        <div className="space-y-2" style={{ background: '#f9f9f9', borderRadius: '0.5rem', padding: '0.5rem' }}>
+                          <textarea
+                            value={editValues.description ?? pw.description}
+                            onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))}
+                            rows={3}
+                            className="rounded-lg px-3 py-2 text-sm w-full resize-none"
+                            style={{ background: '#fff', border: '1px solid #e0e0e0', color: '#0f1924' }}
+                          />
+                          <label className="flex items-center gap-2 text-sm" style={{ color: '#0f1924' }}>
+                            <input
+                              type="checkbox"
+                              checked={editValues.confirmed ?? !!pw.confirmed}
+                              onChange={e => setEditValues(v => ({ ...v, confirmed: e.target.checked }))}
+                            />
+                            Champion has confirmed this
+                          </label>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                await fetch(`/api/champions/professional-wins/${pw.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ description: editValues.description ?? pw.description, confirmed: editValues.confirmed ?? !!pw.confirmed }),
+                                })
+                                setEditingItemId(null)
+                                if (onDataChanged) onDataChanged()
+                              }}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                              style={{ background: '#0f1924', color: '#59bbb7' }}
+                            >Save</button>
+                            <button
+                              onClick={() => setEditingItemId(null)}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                              style={{ background: '#fff', color: '#848d9a', border: '1px solid #e0e0e0' }}
+                            >Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start gap-2">
+                            <p className="text-sm text-gray-800 flex-1">{pw.description}</p>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => { setEditingItemId(`pro-win-${pw.id}`); setEditValues({ description: pw.description, confirmed: !!pw.confirmed }) }}
+                                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="h-3.5 w-3.5" style={{ color: '#848d9a' }} />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  await fetch(`/api/champions/professional-wins/${pw.id}`, { method: 'DELETE' })
+                                  if (onDataChanged) onDataChanged()
+                                }}
+                                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" style={{ color: '#848d9a' }} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-2">
+                            {pw.confirmed ? (
+                              <>
+                                <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                <span className="text-xs text-emerald-600 font-medium">Explicitly confirmed</span>
+                              </>
+                            ) : (
+                              <>
+                                <Circle className="h-3.5 w-3.5 text-gray-300" />
+                                <span className="text-xs text-gray-400">Not yet confirmed</span>
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

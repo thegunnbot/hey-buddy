@@ -16,6 +16,26 @@ router.get('/', (req, res) => {
   res.json(listChampions({ includeArchived }))
 })
 
+// Personal wins — must be before /:id
+router.patch('/personal-wins/:winId', (req, res) => {
+  updatePersonalWin(req.params.winId, req.body)
+  res.json({ ok: true })
+})
+router.delete('/personal-wins/:winId', (req, res) => {
+  deletePersonalWin(req.params.winId)
+  res.json({ ok: true })
+})
+
+// Professional wins — must be before /:id
+router.patch('/professional-wins/:winId', (req, res) => {
+  updateProfessionalWin(req.params.winId, req.body)
+  res.json({ ok: true })
+})
+router.delete('/professional-wins/:winId', (req, res) => {
+  deleteProfessionalWin(req.params.winId)
+  res.json({ ok: true })
+})
+
 router.get('/:id', (req, res) => {
   const c = getChampion(req.params.id)
   if (!c) return res.status(404).json({ error: 'Not found' })
@@ -79,6 +99,11 @@ router.post('/:id/interests', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+router.delete('/:id/interests/:subjectId', (req, res) => {
+  deleteChampionInterest(req.params.id, req.params.subjectId)
+  res.json({ ok: true })
 })
 
 export default router
