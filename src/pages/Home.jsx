@@ -43,11 +43,16 @@ function buildActions(champions) {
         suggestedAction: 'Plan your next touchpoint', suggestedMessage: null })
     }
     for (const t of (c.triggers || [])) {
-      if (t.status === 'pending') {
-        actions.push({ id: `trigger-${t.id}`, type: t.trigger_type === 'sports' ? 'sports' : t.trigger_type === 'custom' ? 'custom' : 'trigger',
-          priority: 2, champion: c, description: t.title,
-          suggestedAction: t.description || t.title, suggestedMessage: t.suggested_message, triggerId: t.id })
+      if (t.status !== 'pending') continue
+      // If fire_at is set, only show if it's today or in the past
+      if (t.fire_at) {
+        const fireDate = new Date(t.fire_at)
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
+        if (fireDate > todayEnd) continue
       }
+      actions.push({ id: `trigger-${t.id}`, type: t.trigger_type === 'sports' ? 'sports' : t.trigger_type === 'custom' ? 'custom' : 'trigger',
+        priority: t.fire_at ? 1 : 2, champion: c, description: t.fire_at ? `${t.title} — ${new Date(t.fire_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : t.title,
+        suggestedAction: t.description || t.title, suggestedMessage: t.suggested_message, triggerId: t.id })
     }
   }
   return actions.sort((a, b) => a.priority - b.priority).slice(0, 6)

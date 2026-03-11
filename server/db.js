@@ -230,8 +230,8 @@ export function addTrigger(championId, data) {
   const db = getDb()
   const id = uuidv4()
   const now = new Date().toISOString()
-  db.prepare(`INSERT INTO triggers (id, champion_id, trigger_type, title, description, suggested_message, schedule, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`)
-    .run(id, championId, data.trigger_type || 'custom', data.title, data.description || null, data.suggested_message || null, data.schedule || null, now)
+  db.prepare(`INSERT INTO triggers (id, champion_id, trigger_type, title, description, suggested_message, schedule, fire_at, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`)
+    .run(id, championId, data.trigger_type || 'custom', data.title, data.description || null, data.suggested_message || null, data.schedule || null, data.fire_at || null, now)
   return { id, champion_id: championId, status: 'pending', ...data }
 }
 
