@@ -282,7 +282,7 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
 
   return (
     <div
-      className={clsx('flex flex-col overflow-hidden rounded-2xl relative', compact ? 'h-full' : 'h-80')}
+      className={clsx('flex flex-col rounded-2xl relative', compact ? 'h-full overflow-hidden' : '')}
       style={{ background: '#f0f0f0', border: `1px solid ${isDragOver ? '#59bbb7' : '#e0e0e0'}`, transition: 'border-color 0.15s' }}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -300,7 +300,7 @@ export default function ChatInterface({ onDataChanged, compact = false, feedback
       )}
 
       {/* Messages */}
-      <div ref={messagesRef} className="flex-1 overflow-auto px-4 py-4 space-y-4">
+      <div ref={messagesRef} className="overflow-auto px-4 py-4 space-y-4" style={{ minHeight: '220px', maxHeight: '400px' }}>
         {isEmpty && showPrompts && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">

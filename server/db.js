@@ -998,6 +998,35 @@ export function markTriggerFired(id) {
   ).run(new Date().toISOString(), id)
 }
 
+// ── Interests / Wins CRUD ─────────────────────────────────
+
+export function deleteChampionInterest(championId, subjectId) {
+  const db = getDb()
+  db.prepare('DELETE FROM champion_subjects WHERE champion_id = ? AND subject_id = ?').run(championId, subjectId)
+}
+
+export function updatePersonalWin(winId, data) {
+  const db = getDb()
+  db.prepare('UPDATE personal_wins SET description = ?, category = ?, date_noted = ?, updated_at = ? WHERE id = ?')
+    .run(data.description, data.category || 'Other', data.date_noted || data.date || null, new Date().toISOString(), winId)
+}
+
+export function deletePersonalWin(winId) {
+  const db = getDb()
+  db.prepare('DELETE FROM personal_wins WHERE id = ?').run(winId)
+}
+
+export function updateProfessionalWin(winId, data) {
+  const db = getDb()
+  db.prepare('UPDATE professional_wins SET description = ?, confirmed = ?, updated_at = ? WHERE id = ?')
+    .run(data.description, data.confirmed ? 1 : 0, new Date().toISOString(), winId)
+}
+
+export function deleteProfessionalWin(winId) {
+  const db = getDb()
+  db.prepare('DELETE FROM professional_wins WHERE id = ?').run(winId)
+}
+
 /**
  * Schedule a one-shot notification (used by the schedule_notification Claude tool).
  */

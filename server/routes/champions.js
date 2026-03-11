@@ -4,6 +4,9 @@ import {
   addPersonalWin, addProfessionalWin, confirmProfessionalWin,
   addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger,
   findOrCreateSubject, linkChampionToSubject,
+  deleteChampionInterest,
+  updatePersonalWin, deletePersonalWin,
+  updateProfessionalWin, deleteProfessionalWin,
 } from '../db.js'
 
 const router = Router()
