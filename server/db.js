@@ -59,7 +59,7 @@ function enrichChampion(champion) {
     interactions: db.prepare('SELECT * FROM interactions WHERE champion_id = ? ORDER BY date DESC').all(champion.id),
     triggers: db.prepare('SELECT * FROM triggers WHERE champion_id = ? ORDER BY created_at DESC').all(champion.id),
     interests: db.prepare(`
-      SELECT s.id, s.name, s.category, cs.confidence, cs.evidence
+      SELECT s.id, s.name, s.type, cs.confidence, cs.evidence
       FROM champion_subjects cs
       JOIN subjects s ON s.id = cs.subject_id
       WHERE cs.champion_id = ?

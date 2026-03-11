@@ -355,8 +355,8 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                       title={interest.evidence}
                     >
                       <span className="font-medium" style={{ color: '#0f1924' }}>{interest.name}</span>
-                      {interest.category && (
-                        <span className="ml-1.5" style={{ color: '#848d9a' }}>· {interest.category}</span>
+                      {interest.type && interest.type !== 'topic' && (
+                        <span className="ml-1.5" style={{ color: '#848d9a' }}>· {interest.type}</span>
                       )}
                     </div>
                   ))}
