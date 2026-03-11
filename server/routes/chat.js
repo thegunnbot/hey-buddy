@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import {
   listChampions, getChampion, addChampion, addPersonalWin,
   addProfessionalWin, confirmProfessionalWin, addInteraction,
-  updateStageCriteria, addTrigger, updateChampion,
+  updateStageCriteria, addTrigger, updateChampion, SCALAR_FIELDS,
   addPendingTrigger, listPendingTriggers, computeHealthScore, getHealthScore,
   getUserProfile, listToneSamples, scheduleNotification, getDb,
 } from '../db.js'
@@ -94,13 +94,27 @@ Whenever Rich mentions any travel — "I'm going to London", "heading to Chicago
 - Logging an interaction (meeting, call, email)
 - Adding a personal win or professional win
 - Marking a stage criterion as met
-- Proposing a trigger
+- Proposing a trigger (interest)
 
 **Ask for confirmation first:**
 - Creating a brand new champion (confirm name, company, type before inserting)
 - Any destructive or irreversible action
+- Updating any scalar field on a champion (see Data Integrity below)
 
 When Rich tells you about a meeting, call, win, or next step — write it to the database straight away, then tell him what you saved. Don't just acknowledge it verbally without saving.
+
+## Data integrity — non-negotiable
+**Never silently overwrite user-curated champion data.** The following scalar fields may have been manually set or corrected by the user: name, company, role, type, stage, location_city, location_country, email, linkedin_url, personal_contact.
+
+When new information (from a transcript, image, or message) suggests a different value for one of these fields:
+1. Call update_champion — if a conflict exists it will return a conflict warning, not apply the change
+2. Show Rich the conflict clearly: current value vs. proposed value
+3. Ask explicitly whether to update
+4. Only call update_champion with force=true after Rich confirms
+
+Example: transcript says "based in London" but champion shows location_city="New York" → surface the conflict, do NOT silently update.
+
+Additive data (interactions, wins, interests, triggers) can always be saved immediately — these never overwrite anything.
 
 ## Tone
 Be sharp, concise, and useful. Ask focused clarifying questions — don't dump everything at once.
@@ -300,6 +314,27 @@ If Rich says they are visiting or travelling to a city, call this to surface rel
       required: ['city'],
     },
   },
+  {
+    name: 'update_champion',
+    description: `Update scalar fields on a champion (name, company, role, type, stage, location_city, location_country, email, linkedin_url, personal_contact).
+IMPORTANT: Before calling this, check for conflicts — if a field was previously set by the user, this tool will return a conflict warning instead of updating. You must show the conflict to Rich and get explicit confirmation before calling again with force=true.
+Never call with force=true without Rich's explicit approval.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        champion_id: { type: 'string', description: 'Champion ID to update' },
+        fields: {
+          type: 'object',
+          description: 'Key-value pairs of fields to update (only scalar fields)',
+        },
+        force: {
+          type: 'boolean',
+          description: 'Set true only after Rich has explicitly confirmed overwriting a user-edited field. Default false.',
+        },
+      },
+      required: ['champion_id', 'fields'],
+    },
+  },
 ]
 
 export function executeTool(name, input) {
@@ -351,6 +386,28 @@ function _executeToolInner(name, input) {
       return scanChampionInterests(input.champion_id || null, input.days || 2)
     case 'champions_in_city':
       return championsInCity(input.city)
+    case 'update_champion': {
+      const champion = getChampion(input.champion_id)
+      if (!champion) return { error: `Champion not found: ${input.champion_id}` }
+      const userEditedFields = JSON.parse(champion.user_edited_fields || '[]')
+      const proposed = input.fields || {}
+      if (!input.force) {
+        // Check for conflicts: field is user-edited AND new value differs from current
+        const conflicts = Object.entries(proposed)
+          .filter(([k, v]) => userEditedFields.includes(k) && champion[k] != null && String(champion[k]) !== String(v))
+          .map(([k, v]) => ({ field: k, current: champion[k], proposed: v }))
+        if (conflicts.length > 0) {
+          return {
+            conflict: true,
+            message: `The following field(s) were previously set by the user. Please show Rich the conflict and ask for confirmation before updating.`,
+            conflicts,
+            instructions: `To apply after Rich confirms, call update_champion again with the same fields and force=true.`,
+          }
+        }
+      }
+      // Safe to update (no conflicts, or force=true after user confirmation)
+      return updateChampion(input.champion_id, proposed, { source: input.force ? 'user' : 'ai' })
+    }
     case 'schedule_notification':
       return scheduleNotification({
         championId: input.champion_id || null,

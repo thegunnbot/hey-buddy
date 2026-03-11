@@ -21,6 +21,7 @@ export function getDb() {
     try { db.exec('ALTER TABLE triggers ADD COLUMN fire_at TEXT') } catch {}
     try { db.exec('ALTER TABLE intelligence_items ADD COLUMN dismiss_reason TEXT') } catch {}
     try { db.exec('ALTER TABLE intelligence_items ADD COLUMN dismiss_note TEXT') } catch {}
+    try { db.exec(`ALTER TABLE champions ADD COLUMN user_edited_fields TEXT NOT NULL DEFAULT '[]'`) } catch {}
   }
   return db
 }
@@ -171,13 +172,32 @@ function seedStageCriteria(championId, type) {
   }
 }
 
-export function updateChampion(id, data) {
+// SCALAR_FIELDS — fields that can be user-edited and should be protected from silent AI overwrites
+export const SCALAR_FIELDS = new Set([
+  'name', 'company', 'role', 'type', 'stage',
+  'location_city', 'location_country', 'email',
+  'linkedin_url', 'personal_contact',
+  'sf_contact_id', 'sf_account_id',
+])
+
+export function updateChampion(id, data, { source = 'ai' } = {}) {
   const db = getDb()
   const now = new Date().toISOString()
-  const fields = Object.keys(data).filter(k => !['id', 'created_at'].includes(k))
+  const fields = Object.keys(data).filter(k => !['id', 'created_at', '_source'].includes(k))
   const setClause = fields.map(f => `${f} = ?`).join(', ')
   const values = fields.map(f => data[f])
-  db.prepare(`UPDATE champions SET ${setClause}, updated_at = ? WHERE id = ?`).run(...values, now, id)
+
+  // If user-sourced, merge edited field names into user_edited_fields
+  if (source === 'user') {
+    const current = db.prepare('SELECT user_edited_fields FROM champions WHERE id = ?').get(id)
+    const existing = JSON.parse(current?.user_edited_fields || '[]')
+    const scalarEdited = fields.filter(f => SCALAR_FIELDS.has(f))
+    const merged = [...new Set([...existing, ...scalarEdited])]
+    db.prepare(`UPDATE champions SET ${setClause}, user_edited_fields = ?, updated_at = ? WHERE id = ?`)
+      .run(...values, JSON.stringify(merged), now, id)
+  } else {
+    db.prepare(`UPDATE champions SET ${setClause}, updated_at = ? WHERE id = ?`).run(...values, now, id)
+  }
   return getChampion(id)
 }
 

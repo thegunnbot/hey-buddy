@@ -48,7 +48,7 @@ router.post('/', (req, res) => {
 })
 
 router.patch('/:id', (req, res) => {
-  const c = updateChampion(req.params.id, req.body)
+  const c = updateChampion(req.params.id, req.body, { source: 'user' })
   res.json(c)
 })
 

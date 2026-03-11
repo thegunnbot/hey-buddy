@@ -271,3 +271,7 @@ CREATE TABLE IF NOT EXISTS intelligence_suppressions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_suppressions_champion ON intelligence_suppressions(champion_id);
+
+-- Track which champion fields were last set by the user (vs AI-inferred)
+-- Stored as a JSON array of field names, e.g. ["location_city", "company"]
+-- Added as a migration below (column may not exist on older DBs)
