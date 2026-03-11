@@ -17,7 +17,7 @@ export default function App() {
 
   const loadChampions = useCallback(async () => {
     try {
-      const data = await fetchChampions()
+      const data = await fetchChampions({ includeArchived: true })
       setChampions(data)
     } catch {
       // Fallback handled in pages
@@ -37,7 +37,7 @@ export default function App() {
     loadChampions()
     if (selectedChampion) {
       // Refresh selected champion detail
-      fetchChampions().then(data => {
+      fetchChampions({ includeArchived: true }).then(data => {
         const updated = data.find(c => c.id === selectedChampion.id)
         if (updated) setSelectedChampion(updated)
       })
