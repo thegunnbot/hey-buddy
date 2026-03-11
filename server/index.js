@@ -15,6 +15,7 @@ import rateLimit from 'express-rate-limit'
 import { seedMockData, getHealthScore, computeHealthScore, listSubjects, archiveChampion, unarchiveChampion, listChampions, getChampionsByLocation, addPendingTrigger } from './db.js'
 import { startBot, sendTelegramMessage } from './bot.js'
 import { scanChampionInterests, formatDigest, listIntelligenceItems, dismissIntelligenceItem, listSuppressions } from './intelligence.js'
+import { getChampionCounts } from './db.js'
 import { requireAuth } from './middleware/auth.js'
 import championsRouter from './routes/champions.js'
 import chatRouter from './routes/chat.js'
@@ -158,6 +159,32 @@ app.post('/api/intelligence/:id/dismiss', requireAuth, (req, res) => {
 // List suppression rules for a champion
 app.get('/api/intelligence/suppressions/:championId', requireAuth, (req, res) => {
   res.json(listSuppressions(req.params.championId))
+})
+
+// Champion review check — internal endpoint
+app.post('/api/intelligence/review-check', async (req, res) => {
+  const secret = process.env.SCAN_SECRET
+  if (!secret || req.headers['x-scan-secret'] !== secret) return res.status(401).json({ error: 'Unauthorised' })
+  try {
+    const champions = listChampions()
+    const overThreshold = champions
+      .filter(c => !c.archived)
+      .map(c => ({ ...c, counts: getChampionCounts(c.id) }))
+      .filter(c => c.counts.interests >= 5 || c.counts.actions >= 5)
+    if (!overThreshold.length) return res.json({ ok: true, sent: false, message: 'All champions within threshold.' })
+    const lines = ['🔍 *Hey Buddy — Monthly Champion Review*\n']
+    for (const c of overThreshold) {
+      const parts = []
+      if (c.counts.interests >= 5) parts.push(`${c.counts.interests} interests`)
+      if (c.counts.actions >= 5) parts.push(`${c.counts.actions} open actions`)
+      lines.push(`*${c.name}* (${c.company}) — ${parts.join(', ')} — worth a review`)
+    }
+    lines.push('\nOpen Hey Buddy to review and prune.')
+    await sendTelegramMessage(process.env.TELEGRAM_RICH_ID, lines.join('\n'), { parse_mode: 'Markdown' })
+    res.json({ ok: true, sent: true, flagged: overThreshold.length })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // Intelligence scan — internal endpoint (protected by SCAN_SECRET)

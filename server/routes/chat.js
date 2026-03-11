@@ -6,6 +6,7 @@ import {
   updateStageCriteria, addTrigger, updateChampion, SCALAR_FIELDS,
   addPendingTrigger, listPendingTriggers, computeHealthScore, getHealthScore,
   getUserProfile, listToneSamples, scheduleNotification, getDb,
+  getChampionCounts, updateTriggerStatus,
 } from '../db.js'
 import { scanChampionInterests, championsInCity } from '../intelligence.js'
 
@@ -70,8 +71,10 @@ When Rich gives you information or asks questions, you can:
 - Look up champion data using the list_champions and get_champion tools
 - Add new champions (ask for confirmation before creating)
 - Log interactions, personal wins, professional wins
-- **Propose interests** using propose_trigger — do this proactively when you spot topics, passions, or events a champion cares about (sport, hobbies, market topics, geopolitical interests). These become intelligence topics that will drive proactive news alerts in the future. Never silently ignore a potential interest.
-- **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests.
+- **Propose interests** using propose_trigger — do this proactively when you spot topics, passions, or events a champion cares about (sport, hobbies, market topics, geopolitical interests). These become intelligence topics that will drive proactive news alerts in the future. Never silently ignore a potential interest. **If the tool returns a _warning, surface it to Rich and offer to review/prune.**
+- **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests. **If the tool returns a _warning, surface it to Rich and offer to dismiss stale actions.**
+- **Prune interests** using remove_interest — when Rich confirms an interest is stale or irrelevant. Always get confirmation before removing.
+- **Dismiss actions** using dismiss_action — when Rich confirms an action is no longer needed. Always get confirmation before dismissing.
 - **Schedule reminders** using schedule_notification — when Rich asks to be reminded about something at a specific time, schedule it as a Telegram push. Always confirm the exact datetime before creating.
 - **Scan intelligence** using scan_champion_interests — covers registered interests, company news (earnings, M&A, announcements), and press mentions of the champion by name. Always suggest outreach angles for anything relevant.
 - **Travel matching** using champions_in_city — whenever Rich mentions travelling to or visiting a city, immediately call this to surface any champions based there and suggest reaching out before the trip.
@@ -315,6 +318,29 @@ If Rich says they are visiting or travelling to a city, call this to surface rel
     },
   },
   {
+    name: 'remove_interest',
+    description: `Remove a registered interest/intelligence topic from a champion. Use when pruning stale or irrelevant interests. Call list_champion or get_champion first to get the subject_id.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        champion_id: { type: 'string' },
+        subject_id: { type: 'string', description: 'ID of the subject/interest to remove' },
+      },
+      required: ['champion_id', 'subject_id'],
+    },
+  },
+  {
+    name: 'dismiss_action',
+    description: `Dismiss (remove from active view) a pending trigger/action for a champion. Use when an action is stale, completed, or no longer relevant.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        trigger_id: { type: 'string', description: 'ID of the trigger/action to dismiss' },
+      },
+      required: ['trigger_id'],
+    },
+  },
+  {
     name: 'update_champion',
     description: `Update scalar fields on a champion (name, company, role, type, stage, location_city, location_country, email, linkedin_url, personal_contact).
 IMPORTANT: Before calling this, check for conflicts — if a field was previously set by the user, this tool will return a conflict warning instead of updating. You must show the conflict to Rich and get explicit confirmation before calling again with force=true.
@@ -374,10 +400,31 @@ function _executeToolInner(name, input) {
       return addInteraction(input.champion_id, input)
     case 'update_stage_criteria':
       return updateStageCriteria(input.champion_id, input.transition, input.criterion_key, input.met)
-    case 'add_custom_trigger':
-      return addTrigger(input.champion_id, { ...input, trigger_type: 'custom' })
-    case 'propose_trigger':
-      return addPendingTrigger(input.champion_id, input)
+    case 'add_custom_trigger': {
+      const result = addTrigger(input.champion_id, { ...input, trigger_type: 'custom' })
+      const counts = getChampionCounts(input.champion_id)
+      if (counts.actions >= 5) {
+        result._warning = `This champion now has ${counts.actions} open actions (threshold: 5). Consider reviewing with Rich whether any older ones can be dismissed.`
+      }
+      return result
+    }
+    case 'propose_trigger': {
+      const result = addPendingTrigger(input.champion_id, input)
+      const counts = getChampionCounts(input.champion_id)
+      if (counts.interests >= 5) {
+        result._warning = `This champion now has ${counts.interests} registered interests (threshold: 5). Consider asking Rich if any are no longer relevant so the intelligence scan stays focused.`
+      }
+      return result
+    }
+    case 'remove_interest': {
+      const db = getDb()
+      db.prepare('DELETE FROM champion_subjects WHERE champion_id = ? AND subject_id = ?')
+        .run(input.champion_id, input.subject_id)
+      return { ok: true, champion_id: input.champion_id, subject_id: input.subject_id }
+    }
+    case 'dismiss_action':
+      updateTriggerStatus(input.trigger_id, 'dismissed')
+      return { ok: true, trigger_id: input.trigger_id }
     case 'get_health_score':
       return getHealthScore(input.champion_id)
     case 'list_pending_triggers':
