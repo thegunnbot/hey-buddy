@@ -207,6 +207,8 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
       name: champion.name || '',
       role: champion.role || '',
       company: champion.company || '',
+      type: champion.type || 'prospect',
+      stage: champion.stage || 'identified',
       personal_contact: champion.personal_contact || champion.personalContact || '',
       location_city: champion.location_city || '',
       location_country: champion.location_country || '',
@@ -266,6 +268,22 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                         placeholder="Role" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-36 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
                       <input value={fieldValues.company} onChange={e => setFieldValues(v => ({ ...v, company: e.target.value }))}
                         placeholder="Company" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-36 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <select value={fieldValues.stage} onChange={e => setFieldValues(v => ({ ...v, stage: e.target.value }))}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-hx-teal">
+                        <option value="identified">Identified</option>
+                        <option value="building">Building</option>
+                        <option value="test">Test</option>
+                        <option value="leverage">Leverage</option>
+                        <option value="nurture">Nurture</option>
+                      </select>
+                      <select value={fieldValues.type} onChange={e => setFieldValues(v => ({ ...v, type: e.target.value }))}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-hx-teal">
+                        <option value="prospect">Prospect</option>
+                        <option value="customer">Customer</option>
+                        <option value="network">Network</option>
+                      </select>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <input value={fieldValues.personal_contact} onChange={e => setFieldValues(v => ({ ...v, personal_contact: e.target.value }))}
