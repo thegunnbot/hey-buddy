@@ -19,6 +19,8 @@ export function getDb() {
     db.exec(schema)
     // Migrations for columns added after initial deploy
     try { db.exec('ALTER TABLE triggers ADD COLUMN fire_at TEXT') } catch {}
+    try { db.exec('ALTER TABLE intelligence_items ADD COLUMN dismiss_reason TEXT') } catch {}
+    try { db.exec('ALTER TABLE intelligence_items ADD COLUMN dismiss_note TEXT') } catch {}
   }
   return db
 }

@@ -51,8 +51,21 @@ export async function scanChampionInterests(championId, days = 2) {
     const seenUrls = new Set()
     const sections = []
 
+    // Build suppression keyword set for this champion
+    const suppressions = getSuppressionContext(champion.id)
+    const suppressKeywords = suppressions
+      .map(s => s.note.toLowerCase().split(/\s+/).filter(w => w.length > 3))
+      .flat()
+
+    const isSuppressed = (article) => {
+      if (!suppressKeywords.length) return false
+      const haystack = (article.title + ' ' + (article.source || '')).toLowerCase()
+      return suppressKeywords.some(kw => haystack.includes(kw))
+    }
+
     const dedup = (articles) => articles.filter(a => {
       if (!a.link || seenUrls.has(a.link)) return false
+      if (isSuppressed(a)) return false
       seenUrls.add(a.link)
       return true
     }).slice(0, 3)
@@ -127,9 +140,37 @@ export function listIntelligenceItems({ limit = 100, championId = null, dismisse
   return db.prepare(query).all(...params)
 }
 
-export function dismissIntelligenceItem(id) {
+export function dismissIntelligenceItem(id, { reason = null, note = null } = {}) {
   const db = getDb()
-  db.prepare(`UPDATE intelligence_items SET dismissed = 1 WHERE id = ?`).run(id)
+  db.prepare(`UPDATE intelligence_items SET dismissed = 1, dismiss_reason = ?, dismiss_note = ? WHERE id = ?`)
+    .run(reason, note, id)
+
+  // If "not_relevant" with a note, store a suppression rule
+  if (reason === 'not_relevant' && note?.trim()) {
+    const item = db.prepare(`SELECT champion_id, section, label FROM intelligence_items WHERE id = ?`).get(id)
+    if (item) {
+      db.prepare(`
+        INSERT INTO intelligence_suppressions (id, champion_id, section, label, note)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(randomUUID(), item.champion_id, item.section, item.label, note.trim())
+    }
+  }
+}
+
+export function listSuppressions(championId) {
+  const db = getDb()
+  return db.prepare(
+    `SELECT * FROM intelligence_suppressions WHERE champion_id = ? ORDER BY created_at DESC`
+  ).all(championId)
+}
+
+// Build a list of suppression keywords for a champion to filter articles at scan time
+export function getSuppressionContext(championId) {
+  const db = getDb()
+  const rows = db.prepare(
+    `SELECT section, label, note FROM intelligence_suppressions WHERE champion_id = ?`
+  ).all(championId)
+  return rows
 }
 
 export function championsInCity(city) {

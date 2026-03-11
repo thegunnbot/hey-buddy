@@ -14,7 +14,7 @@ import { dirname, join } from 'path'
 import rateLimit from 'express-rate-limit'
 import { seedMockData, getHealthScore, computeHealthScore, listSubjects, archiveChampion, unarchiveChampion, listChampions, getChampionsByLocation, addPendingTrigger } from './db.js'
 import { startBot, sendTelegramMessage } from './bot.js'
-import { scanChampionInterests, formatDigest, listIntelligenceItems, dismissIntelligenceItem } from './intelligence.js'
+import { scanChampionInterests, formatDigest, listIntelligenceItems, dismissIntelligenceItem, listSuppressions } from './intelligence.js'
 import { requireAuth } from './middleware/auth.js'
 import championsRouter from './routes/champions.js'
 import chatRouter from './routes/chat.js'
@@ -148,10 +148,16 @@ app.get('/api/intelligence', requireAuth, (req, res) => {
   res.json(listIntelligenceItems({ limit: 200, championId, dismissed }))
 })
 
-// Dismiss an intelligence item
+// Dismiss an intelligence item (with optional reason + note)
 app.post('/api/intelligence/:id/dismiss', requireAuth, (req, res) => {
-  dismissIntelligenceItem(req.params.id)
+  const { reason, note } = req.body || {}
+  dismissIntelligenceItem(req.params.id, { reason, note })
   res.json({ ok: true })
+})
+
+// List suppression rules for a champion
+app.get('/api/intelligence/suppressions/:championId', requireAuth, (req, res) => {
+  res.json(listSuppressions(req.params.championId))
 })
 
 // Intelligence scan — internal endpoint (protected by SCAN_SECRET)

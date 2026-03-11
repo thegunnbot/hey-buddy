@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Zap, Building2, Newspaper, Target, RefreshCw, X, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Zap, Building2, Newspaper, Target, RefreshCw, X, ExternalLink, ChevronDown, ChevronUp, CheckCircle, Eye, Ban } from 'lucide-react'
 import clsx from 'clsx'
 
 const SECTION_CONFIG = {
@@ -45,12 +45,77 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
+function DismissPopover({ onDismiss, onClose }) {
+  const [reason, setReason] = useState(null)
+  const [note, setNote] = useState('')
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) onClose() }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
+  const options = [
+    { id: 'acted', icon: CheckCircle, label: 'Acted on it', colour: 'text-emerald-600' },
+    { id: 'saw', icon: Eye, label: 'Already saw it', colour: 'text-blue-600' },
+    { id: 'not_relevant', icon: Ban, label: 'Not relevant', colour: 'text-red-500' },
+  ]
+
+  function submit(r) {
+    if (r === 'not_relevant' && !note.trim()) return // require note before submit
+    onDismiss(r, r === 'not_relevant' ? note.trim() : null)
+  }
+
+  return (
+    <div ref={ref} className="absolute right-0 top-7 z-50 w-56 bg-white rounded-xl shadow-xl border border-gray-200 p-2">
+      {!reason ? (
+        <div className="space-y-0.5">
+          {options.map(({ id, icon: Icon, label, colour }) => (
+            <button
+              key={id}
+              onClick={() => id === 'not_relevant' ? setReason(id) : submit(id)}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors text-left"
+            >
+              <Icon className={clsx('h-3.5 w-3.5 shrink-0', colour)} />
+              <span className="text-gray-700">{label}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2 p-1">
+          <p className="text-xs font-medium text-gray-600">Why isn't it relevant? <span className="text-gray-400">(optional)</span></p>
+          <textarea
+            autoFocus
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="e.g. wrong company, too generic, old news…"
+            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-hx-teal/30"
+            rows={3}
+          />
+          <div className="flex gap-1.5">
+            <button onClick={() => submit('not_relevant')}
+              className="flex-1 text-xs py-1.5 rounded-lg font-medium text-white bg-red-500 hover:bg-red-600 transition-colors">
+              Dismiss
+            </button>
+            <button onClick={() => setReason(null)}
+              className="px-3 text-xs py-1.5 rounded-lg text-gray-500 border border-gray-200 hover:bg-gray-50">
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Intelligence({ onChampionClick }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
   const [showDismissed, setShowDismissed] = useState(false)
   const [collapsedDates, setCollapsedDates] = useState({})
+  const [openPopover, setOpenPopover] = useState(null) // item id
 
   const load = useCallback(async () => {
     try {
@@ -62,9 +127,14 @@ export default function Intelligence({ onChampionClick }) {
 
   useEffect(() => { load() }, [load])
 
-  async function dismiss(id) {
+  async function dismiss(id, reason, note) {
     setItems(prev => prev.filter(i => i.id !== id))
-    await fetch(`/api/intelligence/${id}/dismiss`, { method: 'POST' })
+    setOpenPopover(null)
+    await fetch(`/api/intelligence/${id}/dismiss`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, note }),
+    })
   }
 
   async function runScan() {
@@ -188,13 +258,21 @@ export default function Intelligence({ onChampionClick }) {
                                   {item.pub_date && <span className="text-xs text-gray-300">{timeAgo(item.pub_date)}</span>}
                                 </div>
                               </div>
-                              <button
-                                onClick={() => dismiss(item.id)}
-                                className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-all"
-                                title="Dismiss"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
+                              <div className="relative shrink-0">
+                                <button
+                                  onClick={() => setOpenPopover(openPopover === item.id ? null : item.id)}
+                                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-all"
+                                  title="Dismiss"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                                {openPopover === item.id && (
+                                  <DismissPopover
+                                    onDismiss={(reason, note) => dismiss(item.id, reason, note)}
+                                    onClose={() => setOpenPopover(null)}
+                                  />
+                                )}
+                              </div>
                             </div>
                           )
                         })}

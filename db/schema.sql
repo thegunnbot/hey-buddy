@@ -260,3 +260,14 @@ CREATE TABLE IF NOT EXISTS intelligence_items (
 );
 CREATE INDEX IF NOT EXISTS idx_intelligence_items_champion ON intelligence_items(champion_id);
 CREATE INDEX IF NOT EXISTS idx_intelligence_items_scanned ON intelligence_items(scanned_at);
+
+-- Topic suppression rules derived from "not relevant" dismissals
+CREATE TABLE IF NOT EXISTS intelligence_suppressions (
+  id TEXT PRIMARY KEY,
+  champion_id TEXT REFERENCES champions(id) ON DELETE CASCADE,
+  section TEXT,         -- interest|company|press|null (null = all sections)
+  label TEXT,           -- the topic/label this suppression applies to
+  note TEXT NOT NULL,   -- the user's free-text reason
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_suppressions_champion ON intelligence_suppressions(champion_id);
