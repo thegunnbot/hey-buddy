@@ -991,7 +991,10 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
           <div className="space-y-6">
             {Object.entries(champion.stageCriteria).map(([key, criteria]) => {
               const metCount = criteria.filter((c) => c.met).length
+              const allMet = criteria.length > 0 && metCount === criteria.length
               const isCurrentStage = key.startsWith(champion.stage) || (champion.stage === 'leverage' && key === 'leverage')
+              const nextStageMap = { 'identified-building': 'building', 'building-test': 'test', 'test-leverage': 'leverage' }
+              const nextStage = nextStageMap[key]
               return (
                 <div key={key} className={clsx(
                   'rounded-xl p-4 border',
@@ -1033,6 +1036,24 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                       </button>
                     ))}
                   </div>
+                  {isCurrentStage && allMet && nextStage && (
+                    <div className="mt-4 pt-3 border-t border-emerald-100">
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/champions/${champion.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ stage: nextStage }),
+                          })
+                          if (onDataChanged) onDataChanged()
+                        }}
+                        className="flex items-center gap-2 w-full justify-center rounded-lg px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Advance to {nextStage.charAt(0).toUpperCase() + nextStage.slice(1)} →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}
