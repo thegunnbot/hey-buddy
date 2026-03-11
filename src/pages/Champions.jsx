@@ -3,7 +3,7 @@ import {
   Search, Linkedin, Phone, MessageSquare,
   CheckCircle, Circle, ExternalLink,
   Trophy, Briefcase, User, Clock, Plus, Zap,
-  Archive, ArchiveRestore, MapPin
+  Archive, ArchiveRestore, MapPin, Pencil
 } from 'lucide-react'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
@@ -63,11 +63,20 @@ function ChampionRow({ champion, selected, onClick }) {
   )
 }
 
-function StageCriteria({ champion }) {
+function StageCriteria({ champion, onDataChanged }) {
   const currentStageKey = Object.keys(champion.stageCriteria).find((k) => k.startsWith(champion.stage))
   if (!currentStageKey) return null
   const criteria = champion.stageCriteria[currentStageKey]
   const metCount = criteria.filter((c) => c.met).length
+
+  async function toggleCriterion(c) {
+    await fetch(`/api/champions/${champion.id}/stage-criteria`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transition: currentStageKey, criterion_key: c.key, met: !c.met }),
+    })
+    if (onDataChanged) onDataChanged()
+  }
 
   return (
     <div className="space-y-2">
@@ -85,7 +94,8 @@ function StageCriteria({ champion }) {
       </div>
       <div className="space-y-1.5 mt-3">
         {criteria.map((c) => (
-          <div key={c.key} className="flex items-start gap-2">
+          <button key={c.key} onClick={() => toggleCriterion(c)}
+            className="flex items-start gap-2 w-full text-left cursor-pointer hover:opacity-70 transition-opacity">
             {c.met ? (
               <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
             ) : (
@@ -94,16 +104,20 @@ function StageCriteria({ champion }) {
             <span className={clsx('text-sm', c.met ? 'text-gray-500 line-through' : 'text-gray-700')}>
               {c.label}
             </span>
-          </div>
+          </button>
         ))}
       </div>
     </div>
   )
 }
 
-function ChampionDetail({ champion, onArchiveToggle }) {
+function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
   const [activeSection, setActiveSection] = useState('overview')
   const [archiving, setArchiving] = useState(false)
+  const [editingFields, setEditingFields] = useState(false)
+  const [fieldValues, setFieldValues] = useState({})
+  const [editingTriggerId, setEditingTriggerId] = useState(null)
+  const [triggerEditValues, setTriggerEditValues] = useState({})
   const daysSince = Math.floor(
     (new Date() - new Date(champion.last_contact_date)) / (1000 * 60 * 60 * 24),
   )
@@ -116,6 +130,48 @@ function ChampionDetail({ champion, onArchiveToggle }) {
     if (onArchiveToggle) onArchiveToggle()
   }
 
+  function startEditFields() {
+    setFieldValues({
+      name: champion.name || '',
+      role: champion.role || '',
+      company: champion.company || '',
+      personal_contact: champion.personal_contact || champion.personalContact || '',
+      location_city: champion.location_city || '',
+      location_country: champion.location_country || '',
+    })
+    setEditingFields(true)
+  }
+
+  async function saveFields() {
+    await fetch(`/api/champions/${champion.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fieldValues),
+    })
+    setEditingFields(false)
+    if (onDataChanged) onDataChanged()
+  }
+
+  function startEditTrigger(t) {
+    setEditingTriggerId(t.id)
+    setTriggerEditValues({
+      title: t.title || '',
+      description: t.description || '',
+      suggested_message: t.suggested_message || '',
+      fire_at: t.fire_at ? t.fire_at.slice(0, 16) : '',
+    })
+  }
+
+  async function saveTrigger(triggerId) {
+    await fetch(`/api/champions/triggers/${triggerId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(triggerEditValues),
+    })
+    setEditingTriggerId(null)
+    if (onDataChanged) onDataChanged()
+  }
+
   return (
     <div className="flex flex-col h-full overflow-auto">
       {/* Header */}
@@ -124,9 +180,42 @@ function ChampionDetail({ champion, onArchiveToggle }) {
           <Avatar initials={champion.initials} name={champion.name} size="lg" />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">{champion.name}</h2>
-                <p className="text-sm text-gray-500">{champion.role} · {champion.company}</p>
+              <div className="flex-1 min-w-0">
+                {editingFields ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <input value={fieldValues.name} onChange={e => setFieldValues(v => ({ ...v, name: e.target.value }))}
+                        placeholder="Name" className="border border-gray-300 rounded px-2 py-1 text-sm font-bold text-gray-900 w-40 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                      <input value={fieldValues.role} onChange={e => setFieldValues(v => ({ ...v, role: e.target.value }))}
+                        placeholder="Role" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-36 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                      <input value={fieldValues.company} onChange={e => setFieldValues(v => ({ ...v, company: e.target.value }))}
+                        placeholder="Company" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-36 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <input value={fieldValues.personal_contact} onChange={e => setFieldValues(v => ({ ...v, personal_contact: e.target.value }))}
+                        placeholder="Personal contact" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-36 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                      <input value={fieldValues.location_city} onChange={e => setFieldValues(v => ({ ...v, location_city: e.target.value }))}
+                        placeholder="City" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-28 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                      <input value={fieldValues.location_country} onChange={e => setFieldValues(v => ({ ...v, location_country: e.target.value }))}
+                        placeholder="Country" className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 w-28 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={saveFields} className="rounded px-3 py-1 text-xs font-medium text-white" style={{ background: '#0f1924' }}>Save</button>
+                      <button onClick={() => setEditingFields(false)} className="rounded px-3 py-1 text-xs font-medium text-gray-600 border border-gray-300">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">{champion.name}</h2>
+                      <p className="text-sm text-gray-500">{champion.role} · {champion.company}</p>
+                    </div>
+                    <button onClick={startEditFields} title="Edit fields"
+                      className="mt-1 p-1 rounded hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <StageTag stage={champion.stage} size="md" />
@@ -136,68 +225,70 @@ function ChampionDetail({ champion, onArchiveToggle }) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-3">
-              {champion.linkedinUrl && (
-                <a
-                  href={champion.linkedinUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-medium text-hx-teal hover:text-hx-teal transition-colors"
+            {!editingFields && (
+              <div className="flex items-center gap-3 mt-3">
+                {champion.linkedinUrl && (
+                  <a
+                    href={champion.linkedinUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-medium text-hx-teal hover:text-hx-teal transition-colors"
+                  >
+                    <Linkedin className="h-3.5 w-3.5" />
+                    LinkedIn
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+                {champion.personalContact && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <Phone className="h-3.5 w-3.5" />
+                    {champion.personalContact}
+                  </span>
+                )}
+                {(champion.location_city || champion.location_country) && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {[champion.location_city, champion.location_country].filter(Boolean).join(', ')}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Clock className="h-3.5 w-3.5" />
+                  Last contact {daysSince} days ago
+                </span>
+                <span className={clsx(
+                  'text-xs font-medium px-2 py-0.5 rounded-full border capitalize',
+                  typeBadge[champion.type] || 'bg-gray-100 text-gray-600 border-gray-200'
+                )}>
+                  {champion.type}
+                </span>
+                <span className={clsx(
+                  'text-xs font-medium px-2 py-0.5 rounded-full',
+                  champion.deal_status === 'post-sfo'
+                    ? 'bg-amber-100 text-amber-700'
+                    : champion.deal_status === 'network'
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'bg-gray-100 text-gray-600'
+                )}>
+                  {champion.deal_status === 'post-sfo' ? 'Active deal' : champion.deal_status === 'network' ? 'Network' : 'Pre-SQO'}
+                </span>
+                <button
+                  onClick={handleArchiveToggle}
+                  disabled={archiving}
+                  className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-50 ml-1"
+                  style={{
+                    borderColor: champion.archived ? '#59bbb7' : '#e0e0e0',
+                    color: champion.archived ? '#59bbb7' : '#848d9a',
+                    background: 'transparent',
+                  }}
+                  title={champion.archived ? 'Restore champion' : 'Archive champion'}
                 >
-                  <Linkedin className="h-3.5 w-3.5" />
-                  LinkedIn
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-              {champion.personalContact && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <Phone className="h-3.5 w-3.5" />
-                  {champion.personalContact}
-                </span>
-              )}
-              {(champion.location_city || champion.location_country) && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {[champion.location_city, champion.location_country].filter(Boolean).join(', ')}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Clock className="h-3.5 w-3.5" />
-                Last contact {daysSince} days ago
-              </span>
-              <span className={clsx(
-                'text-xs font-medium px-2 py-0.5 rounded-full border capitalize',
-                typeBadge[champion.type] || 'bg-gray-100 text-gray-600 border-gray-200'
-              )}>
-                {champion.type}
-              </span>
-              <span className={clsx(
-                'text-xs font-medium px-2 py-0.5 rounded-full',
-                champion.deal_status === 'post-sfo'
-                  ? 'bg-amber-100 text-amber-700'
-                  : champion.deal_status === 'network'
-                  ? 'bg-violet-100 text-violet-700'
-                  : 'bg-gray-100 text-gray-600'
-              )}>
-                {champion.deal_status === 'post-sfo' ? 'Active deal' : champion.deal_status === 'network' ? 'Network' : 'Pre-SQO'}
-              </span>
-              <button
-                onClick={handleArchiveToggle}
-                disabled={archiving}
-                className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-50 ml-1"
-                style={{
-                  borderColor: champion.archived ? '#59bbb7' : '#e0e0e0',
-                  color: champion.archived ? '#59bbb7' : '#848d9a',
-                  background: 'transparent',
-                }}
-                title={champion.archived ? 'Restore champion' : 'Archive champion'}
-              >
-                {champion.archived
-                  ? <><ArchiveRestore className="h-3 w-3" /> Restore</>
-                  : <><Archive className="h-3 w-3" /> Archive</>
-                }
-              </button>
-            </div>
+                  {champion.archived
+                    ? <><ArchiveRestore className="h-3 w-3" /> Restore</>
+                    : <><Archive className="h-3 w-3" /> Archive</>
+                  }
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -339,33 +430,56 @@ function ChampionDetail({ champion, onArchiveToggle }) {
                       const due = nextDue(t)
                       const isOverdue = due && due < new Date()
                       const isToday = due && due.toDateString() === new Date().toDateString()
+                      const isEditing = editingTriggerId === t.id
                       return (
                         <div key={t.id} className="rounded-lg bg-white border border-gray-200 p-3 space-y-1.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium text-gray-900">{t.title}</p>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {t.schedule && (
-                                <span className="text-xs font-medium rounded-full px-2 py-0.5 capitalize" style={{ background: 'rgba(78,112,248,0.08)', color: '#4e70f8' }}>
-                                  {t.schedule}
-                                </span>
-                              )}
-                              {due && (
-                                <span className="text-xs font-medium rounded-full px-2 py-0.5" style={{
-                                  background: isOverdue ? 'rgba(238,108,91,0.1)' : isToday ? 'rgba(89,187,183,0.1)' : '#f5f5f5',
-                                  color: isOverdue ? '#ee6c5b' : isToday ? '#59bbb7' : '#848d9a'
-                                }}>
-                                  {isOverdue ? 'Overdue' : isToday
-                                    ? `Today ${due.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                                    : due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                </span>
-                              )}
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <input value={triggerEditValues.title} onChange={e => setTriggerEditValues(v => ({ ...v, title: e.target.value }))}
+                                placeholder="Title" className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                              <input value={triggerEditValues.description} onChange={e => setTriggerEditValues(v => ({ ...v, description: e.target.value }))}
+                                placeholder="Description" className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                              <input value={triggerEditValues.suggested_message} onChange={e => setTriggerEditValues(v => ({ ...v, suggested_message: e.target.value }))}
+                                placeholder="Suggested message" className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                              <input type="datetime-local" value={triggerEditValues.fire_at} onChange={e => setTriggerEditValues(v => ({ ...v, fire_at: e.target.value }))}
+                                className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+                              <div className="flex gap-2">
+                                <button onClick={() => saveTrigger(t.id)} className="rounded px-3 py-1 text-xs font-medium text-white" style={{ background: '#0f1924' }}>Save</button>
+                                <button onClick={() => setEditingTriggerId(null)} className="rounded px-3 py-1 text-xs font-medium text-gray-600 border border-gray-300">Cancel</button>
+                              </div>
                             </div>
-                          </div>
-                          {t.description && t.description !== t.title && (
-                            <p className="text-xs text-gray-500">{t.description}</p>
-                          )}
-                          {t.suggested_message && (
-                            <p className="text-xs italic text-gray-400 border-t border-gray-100 pt-1.5">"{t.suggested_message}"</p>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium text-gray-900">{t.title}</p>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {t.schedule && (
+                                    <span className="text-xs font-medium rounded-full px-2 py-0.5 capitalize" style={{ background: 'rgba(78,112,248,0.08)', color: '#4e70f8' }}>
+                                      {t.schedule}
+                                    </span>
+                                  )}
+                                  {due && (
+                                    <span className="text-xs font-medium rounded-full px-2 py-0.5" style={{
+                                      background: isOverdue ? 'rgba(238,108,91,0.1)' : isToday ? 'rgba(89,187,183,0.1)' : '#f5f5f5',
+                                      color: isOverdue ? '#ee6c5b' : isToday ? '#59bbb7' : '#848d9a'
+                                    }}>
+                                      {isOverdue ? 'Overdue' : isToday
+                                        ? `Today ${due.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                        : due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                  )}
+                                  <button onClick={() => startEditTrigger(t)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+                              {t.description && t.description !== t.title && (
+                                <p className="text-xs text-gray-500">{t.description}</p>
+                              )}
+                              {t.suggested_message && (
+                                <p className="text-xs italic text-gray-400 border-t border-gray-100 pt-1.5">"{t.suggested_message}"</p>
+                              )}
+                            </>
                           )}
                         </div>
                       )
@@ -445,7 +559,14 @@ function ChampionDetail({ champion, onArchiveToggle }) {
                   </div>
                   <div className="space-y-2">
                     {criteria.map((c) => (
-                      <div key={c.key} className="flex items-start gap-2">
+                      <button key={c.key} onClick={async () => {
+                        await fetch(`/api/champions/${champion.id}/stage-criteria`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ transition: key, criterion_key: c.key, met: !c.met }),
+                        })
+                        if (onDataChanged) onDataChanged()
+                      }} className="flex items-start gap-2 w-full text-left cursor-pointer hover:opacity-70 transition-opacity">
                         {c.met ? (
                           <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                         ) : (
@@ -454,7 +575,7 @@ function ChampionDetail({ champion, onArchiveToggle }) {
                         <span className={clsx('text-sm', c.met ? 'text-gray-400 line-through' : 'text-gray-700')}>
                           {c.label}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -565,7 +686,7 @@ export default function Champions({ champions = [], selectedChampion, onSelectCh
       {/* Detail panel */}
       <div className="flex-1 overflow-hidden">
         {selectedChampion ? (
-          <ChampionDetail champion={selectedChampion} onArchiveToggle={onDataChanged} />
+          <ChampionDetail champion={selectedChampion} onArchiveToggle={onDataChanged} onDataChanged={onDataChanged} />
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="text-center space-y-2">

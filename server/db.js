@@ -240,6 +240,15 @@ export function updateTriggerStatus(triggerId, status) {
   db.prepare(`UPDATE triggers SET status = ? WHERE id = ?`).run(status, triggerId)
 }
 
+export function updateTrigger(triggerId, data) {
+  const db = getDb()
+  const fields = ['title', 'description', 'suggested_message', 'schedule', 'fire_at']
+  const updates = fields.filter(f => data[f] !== undefined)
+  if (!updates.length) return
+  const sql = `UPDATE triggers SET ${updates.map(f => `${f} = ?`).join(', ')} WHERE id = ?`
+  db.prepare(sql).run(...updates.map(f => data[f] ?? null), triggerId)
+}
+
 // ── Bot user allowlist ─────────────────────────────────────
 
 export function isApprovedUser(platform, platformUserId) {

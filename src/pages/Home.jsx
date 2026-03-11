@@ -1,4 +1,4 @@
-import { AlertCircle, Clock, Zap, Trophy, MessageSquare, Copy, Loader2, Mail } from 'lucide-react'
+import { AlertCircle, Clock, Zap, Trophy, MessageSquare, Copy, Loader2, Mail, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
@@ -64,6 +64,22 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
   const [longMsg, setLongMsg] = useState(null)
   const [loadingLong, setLoadingLong] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [editingTrigger, setEditingTrigger] = useState(false)
+  const [triggerEditValues, setTriggerEditValues] = useState({
+    title: action.suggestedAction || '',
+    description: action.description || '',
+    suggested_message: action.suggestedMessage || '',
+  })
+
+  async function saveTriggerEdit() {
+    await fetch(`/api/champions/triggers/${action.triggerId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(triggerEditValues),
+    }).catch(() => {})
+    setEditingTrigger(false)
+    onActionTaken(action.id)
+  }
 
   const currentMsg = channel === 'long' && longMsg ? longMsg : action.suggestedMessage
 
@@ -130,9 +146,32 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
             </button>
             <span className="text-xs" style={{ color: '#848d9a' }}>{action.champion.company}</span>
             <StageTag stage={action.champion.stage} />
+            {action.triggerId && !editingTrigger && (
+              <button onClick={() => { setTriggerEditValues({ title: action.suggestedAction || '', description: action.description || '', suggested_message: action.suggestedMessage || '' }); setEditingTrigger(true) }}
+                title="Edit action" className="p-0.5 rounded hover:bg-white/40 transition-colors" style={{ color: '#848d9a' }}>
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
           </div>
-          <p className="text-sm mt-0.5" style={{ color: '#505862' }}>{action.description}</p>
-          <p className="text-sm font-medium mt-1" style={{ color: '#0f1924' }}>{action.suggestedAction}</p>
+          {editingTrigger ? (
+            <div className="space-y-2 mt-2">
+              <input value={triggerEditValues.title} onChange={e => setTriggerEditValues(v => ({ ...v, title: e.target.value }))}
+                placeholder="Title" className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+              <input value={triggerEditValues.description} onChange={e => setTriggerEditValues(v => ({ ...v, description: e.target.value }))}
+                placeholder="Description" className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+              <input value={triggerEditValues.suggested_message} onChange={e => setTriggerEditValues(v => ({ ...v, suggested_message: e.target.value }))}
+                placeholder="Suggested message" className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-hx-teal" />
+              <div className="flex gap-2">
+                <button onClick={saveTriggerEdit} className="rounded px-3 py-1 text-xs font-medium text-white" style={{ background: '#0f1924' }}>Save</button>
+                <button onClick={() => setEditingTrigger(false)} className="rounded px-3 py-1 text-xs font-medium border border-gray-300 bg-white" style={{ color: '#505862' }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm mt-0.5" style={{ color: '#505862' }}>{action.description}</p>
+              <p className="text-sm font-medium mt-1" style={{ color: '#0f1924' }}>{action.suggestedAction}</p>
+            </>
+          )}
         </div>
       </div>
 

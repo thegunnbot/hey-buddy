@@ -2,7 +2,7 @@ import { Router } from 'express'
 import {
   listChampions, getChampion, addChampion, updateChampion,
   addPersonalWin, addProfessionalWin, confirmProfessionalWin,
-  addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus,
+  addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger,
 } from '../db.js'
 
 const router = Router()
@@ -57,6 +57,11 @@ router.post('/:id/triggers', (req, res) => {
 
 router.patch('/triggers/:triggerId/status', (req, res) => {
   updateTriggerStatus(req.params.triggerId, req.body.status)
+  res.json({ ok: true })
+})
+
+router.patch('/triggers/:triggerId', (req, res) => {
+  updateTrigger(req.params.triggerId, req.body)
   res.json({ ok: true })
 })
 
