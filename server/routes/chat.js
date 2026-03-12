@@ -4,7 +4,7 @@ import {
   listChampions, getChampion, addChampion, addPersonalWin,
   addProfessionalWin, confirmProfessionalWin, addInteraction,
   updateStageCriteria, addTrigger, updateChampion, SCALAR_FIELDS,
-  computeHealthScore, getHealthScore,
+  computeHealthScore, getHealthScore, addFamilyMember, removeFamilyMember, updateFamilyMember,
   getUserProfile, listToneSamples, scheduleNotification, getDb,
   getChampionCounts, updateTriggerStatus, findOrCreateSubject, linkChampionToSubject,
 } from '../db.js'
@@ -77,6 +77,7 @@ When Rich gives you information or asks questions, you can:
   3. **Champion's own name or company** — never propose these; company news is scanned automatically (tool will reject and return _skipped).
   The goal is interests that are concise and referenceable enough to surface useful news. Rich always has final say — if he wants a specific phrasing, use it.
 - **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests. **If the tool returns a _warning, surface it to Rich and offer to dismiss stale actions.**
+- **Track family** using add_family_member — when you learn a champion has a partner, spouse, kids, or pets. Store name (if known), relationship, birth_year (if age is known: current_year - age), and any relevant notes. Do this proactively from transcripts. No confirmation needed — Rich can remove via the profile. Use remove_family_member for corrections and update_family_member when new info comes in (e.g. you learn a name you didn't have before).
 - **Prune interests** using remove_interest — when Rich confirms an interest is stale or irrelevant. Always get confirmation before removing.
 - **Dismiss actions** using dismiss_action — when Rich confirms an action is no longer needed. Always get confirmation before dismissing.
 - **If add_personal_win or add_professional_win returns a _warning**, surface it and offer to review/remove outdated wins. Always confirm before deleting a win.
@@ -330,6 +331,47 @@ If Rich says they are visiting or travelling to a city, call this to surface rel
     },
   },
   {
+    name: 'add_family_member',
+    description: `Record a family member (partner, spouse, child, pet) for a champion. Store immediately — no approval needed. Use birth_year (current_year - age) when age is known.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        champion_id: { type: 'string' },
+        relationship: { type: 'string', enum: ['spouse', 'partner', 'child', 'pet'], description: 'Type of family member' },
+        name: { type: 'string', description: 'Name if known — omit if unknown' },
+        birth_year: { type: 'integer', description: 'Birth year if age is known (current_year - age)' },
+        notes: { type: 'string', description: 'Any relevant context e.g. "loves hockey", "at NYU"' },
+      },
+      required: ['champion_id', 'relationship'],
+    },
+  },
+  {
+    name: 'update_family_member',
+    description: `Update an existing family member record — use when new info arrives (e.g. you now know their name or age).`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        member_id: { type: 'string', description: 'ID of the family member record' },
+        name: { type: 'string' },
+        birth_year: { type: 'integer' },
+        notes: { type: 'string' },
+        relationship: { type: 'string', enum: ['spouse', 'partner', 'child', 'pet'] },
+      },
+      required: ['member_id'],
+    },
+  },
+  {
+    name: 'remove_family_member',
+    description: `Remove a family member record — use for corrections or if the entry is wrong.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        member_id: { type: 'string', description: 'ID of the family member record to remove' },
+      },
+      required: ['member_id'],
+    },
+  },
+  {
     name: 'dismiss_action',
     description: `Dismiss (remove from active view) a pending trigger/action for a champion. Use when an action is stale, completed, or no longer relevant.`,
     input_schema: {
@@ -455,6 +497,22 @@ function _executeToolInner(name, input) {
         .run(input.champion_id, input.subject_id)
       return { ok: true, champion_id: input.champion_id, subject_id: input.subject_id }
     }
+    case 'add_family_member':
+      return addFamilyMember(input.champion_id, {
+        relationship: input.relationship,
+        name: input.name,
+        birth_year: input.birth_year,
+        notes: input.notes,
+      })
+    case 'update_family_member':
+      return updateFamilyMember(input.member_id, {
+        name: input.name,
+        birth_year: input.birth_year,
+        notes: input.notes,
+        relationship: input.relationship,
+      })
+    case 'remove_family_member':
+      return removeFamilyMember(input.member_id)
     case 'dismiss_action':
       updateTriggerStatus(input.trigger_id, 'dismissed')
       return { ok: true, trigger_id: input.trigger_id }

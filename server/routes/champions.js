@@ -7,6 +7,7 @@ import {
   deleteChampionInterest, restoreChampionInterest,
   updatePersonalWin, deletePersonalWin, restorePersonalWin,
   updateProfessionalWin, deleteProfessionalWin, restoreProfessionalWin,
+  addFamilyMember, removeFamilyMember, updateFamilyMember,
 } from '../db.js'
 
 const router = Router()
@@ -122,6 +123,36 @@ router.delete('/:id/interests/:subjectId', (req, res) => {
 router.post('/:id/interests/:subjectId/restore', (req, res) => {
   restoreChampionInterest(req.params.id, req.params.subjectId)
   res.json({ ok: true })
+})
+
+// ── Family ────────────────────────────────────────────────
+
+router.post('/:id/family', (req, res) => {
+  try {
+    const member = addFamilyMember(req.params.id, req.body)
+    res.status(201).json(member)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.patch('/family/:memberId', (req, res) => {
+  try {
+    const updated = updateFamilyMember(req.params.memberId, req.body)
+    if (!updated) return res.status(404).json({ error: 'not found' })
+    res.json(updated)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.delete('/family/:memberId', (req, res) => {
+  try {
+    removeFamilyMember(req.params.memberId)
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router

@@ -25,6 +25,17 @@ export function getDb() {
     try { db.exec(`ALTER TABLE personal_wins ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
     try { db.exec(`ALTER TABLE professional_wins ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
     try { db.exec(`ALTER TABLE champion_subjects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
+    try { db.exec(`
+      CREATE TABLE IF NOT EXISTS champion_family (
+        id TEXT PRIMARY KEY,
+        champion_id TEXT NOT NULL REFERENCES champions(id) ON DELETE CASCADE,
+        relationship TEXT NOT NULL,
+        name TEXT,
+        birth_year INTEGER,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `) } catch {}
   }
   return db
 }
@@ -80,6 +91,7 @@ function enrichChampion(champion) {
       WHERE cs.champion_id = ? AND cs.archived = 1
       ORDER BY s.name ASC
     `).all(champion.id),
+    family: db.prepare('SELECT * FROM champion_family WHERE champion_id = ? ORDER BY relationship, name').all(champion.id),
   }
 }
 
@@ -471,6 +483,31 @@ export function linkChampionToSubject(championId, subjectId, confidence = 'expli
   db.prepare(`INSERT INTO champion_subjects (id, champion_id, subject_id, confidence, evidence) VALUES (?, ?, ?, ?, ?)`)
     .run(id, championId, subjectId, confidence, evidence)
   return db.prepare('SELECT * FROM champion_subjects WHERE id = ?').get(id)
+}
+
+// ── Family ────────────────────────────────────────────────
+
+export function addFamilyMember(championId, { relationship, name, birth_year, notes }) {
+  const db = getDb()
+  const id = uuidv4()
+  db.prepare(`INSERT INTO champion_family (id, champion_id, relationship, name, birth_year, notes) VALUES (?, ?, ?, ?, ?, ?)`)
+    .run(id, championId, relationship, name || null, birth_year || null, notes || null)
+  return db.prepare('SELECT * FROM champion_family WHERE id = ?').get(id)
+}
+
+export function removeFamilyMember(memberId) {
+  const db = getDb()
+  db.prepare('DELETE FROM champion_family WHERE id = ?').run(memberId)
+  return { ok: true, id: memberId }
+}
+
+export function updateFamilyMember(memberId, { name, birth_year, notes, relationship }) {
+  const db = getDb()
+  const existing = db.prepare('SELECT * FROM champion_family WHERE id = ?').get(memberId)
+  if (!existing) return null
+  db.prepare(`UPDATE champion_family SET relationship = ?, name = ?, birth_year = ?, notes = ? WHERE id = ?`)
+    .run(relationship ?? existing.relationship, name ?? existing.name, birth_year ?? existing.birth_year, notes ?? existing.notes, memberId)
+  return db.prepare('SELECT * FROM champion_family WHERE id = ?').get(memberId)
 }
 
 // When a personal win or trigger is added, register the subject and cross-reference other champions
