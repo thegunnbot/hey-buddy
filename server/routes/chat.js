@@ -4,7 +4,7 @@ import {
   listChampions, getChampion, addChampion, addPersonalWin,
   addProfessionalWin, confirmProfessionalWin, addInteraction,
   updateStageCriteria, addTrigger, updateChampion, SCALAR_FIELDS,
-  addPendingTrigger, listPendingTriggers, computeHealthScore, getHealthScore,
+  computeHealthScore, getHealthScore,
   getUserProfile, listToneSamples, scheduleNotification, getDb,
   getChampionCounts, updateTriggerStatus, findOrCreateSubject, linkChampionToSubject,
 } from '../db.js'
@@ -260,11 +260,6 @@ export const TOOLS = [
     },
   },
   {
-    name: 'list_pending_triggers',
-    description: 'List all pending trigger proposals awaiting approval.',
-    input_schema: { type: 'object', properties: {}, required: [] },
-  },
-  {
     name: 'schedule_notification',
     description: `Schedule a one-shot Telegram notification to fire at a specific date and time.
 Use this when Rich asks to be reminded about something — e.g. "remind me to message Sarah on Chelsea match day", "remind me before the deal review on Thursday".
@@ -466,7 +461,7 @@ function _executeToolInner(name, input) {
     case 'get_health_score':
       return getHealthScore(input.champion_id)
     case 'list_pending_triggers':
-      return listPendingTriggers()
+      return { ok: false, message: 'list_pending_triggers is deprecated — interests are now stored directly.' }
     case 'scan_champion_interests':
       return scanChampionInterests(input.champion_id || null, input.days || 2)
     case 'champions_in_city':

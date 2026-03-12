@@ -6,7 +6,7 @@ import StageTag from '../components/StageTag'
 import HealthDot from '../components/HealthDot'
 import Avatar from '../components/Avatar'
 import ChatInterface from '../components/ChatInterface'
-import PendingTriggers from '../components/PendingTriggers'
+
 import HealthScore from '../components/HealthScore'
 
 const actionTypeConfig = {
@@ -379,14 +379,7 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
           }
         </div>
 
-        {/* Pending trigger proposals */}
-        <PendingTriggers
-          onResolved={onDataChanged}
-          onChampionClick={(id) => {
-            const c = champions.find(ch => ch.id === id)
-            if (c) onChampionClick(c)
-          }}
-        />
+
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
