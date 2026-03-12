@@ -125,6 +125,8 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
   const [formValues, setFormValues] = useState({})
   const [editingItemId, setEditingItemId] = useState(null)
   const [editValues, setEditValues] = useState({})
+  const [showArchivedPersonalWins, setShowArchivedPersonalWins] = useState(false)
+  const [showArchivedProfessionalWins, setShowArchivedProfessionalWins] = useState(false)
 
   function openAddForm(section, defaults = {}) {
     setAddingSection(section)
@@ -586,6 +588,12 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                   style={{ color: '#59bbb7' }} title="Add personal win">
                   <Plus className="h-3.5 w-3.5" />
                 </button>
+                {champion.archivedPersonalWins?.length > 0 && (
+                  <button onClick={() => setShowArchivedPersonalWins(v => !v)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                    {showArchivedPersonalWins ? 'Hide' : `+${champion.archivedPersonalWins.length} archived`}
+                  </button>
+                )}
               </div>
               {addingSection === 'personal_win' && (
                 <div className="rounded-lg p-3 space-y-2 mb-3" style={{ background: '#f9f9f9', border: '1px solid #e0e0e0' }}>
@@ -682,6 +690,17 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                   ))}
                 </div>
               )}
+              {showArchivedPersonalWins && champion.archivedPersonalWins?.length > 0 && (
+                <div className="mt-2 space-y-1.5 opacity-60">
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Archived</p>
+                  {champion.archivedPersonalWins.map(pw => (
+                    <div key={pw.id} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 flex items-start gap-2">
+                      <span className="text-base leading-none">{pw.emoji}</span>
+                      <p className="text-sm text-gray-500 flex-1">{pw.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Professional wins */}
@@ -694,6 +713,12 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                   style={{ color: '#59bbb7' }} title="Add professional win">
                   <Plus className="h-3.5 w-3.5" />
                 </button>
+                {champion.archivedProfessionalWins?.length > 0 && (
+                  <button onClick={() => setShowArchivedProfessionalWins(v => !v)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                    {showArchivedProfessionalWins ? 'Hide' : `+${champion.archivedProfessionalWins.length} archived`}
+                  </button>
+                )}
               </div>
               {addingSection === 'professional_win' && (
                 <div className="rounded-lg p-3 space-y-2 mb-3" style={{ background: '#f9f9f9', border: '1px solid #e0e0e0' }}>
@@ -802,6 +827,17 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                           </div>
                         </>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showArchivedProfessionalWins && champion.archivedProfessionalWins?.length > 0 && (
+                <div className="mt-2 space-y-1.5 opacity-60">
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Archived</p>
+                  {champion.archivedProfessionalWins.map(pw => (
+                    <div key={pw.id} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                      <p className="text-sm text-gray-500">{pw.description}</p>
+                      {pw.confirmed ? <p className="text-xs text-emerald-500 mt-0.5">✓ Confirmed</p> : null}
                     </div>
                   ))}
                 </div>

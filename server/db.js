@@ -22,6 +22,8 @@ export function getDb() {
     try { db.exec('ALTER TABLE intelligence_items ADD COLUMN dismiss_reason TEXT') } catch {}
     try { db.exec('ALTER TABLE intelligence_items ADD COLUMN dismiss_note TEXT') } catch {}
     try { db.exec(`ALTER TABLE champions ADD COLUMN user_edited_fields TEXT NOT NULL DEFAULT '[]'`) } catch {}
+    try { db.exec(`ALTER TABLE personal_wins ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
+    try { db.exec(`ALTER TABLE professional_wins ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
   }
   return db
 }
@@ -56,8 +58,10 @@ function enrichChampion(champion) {
   return {
     ...champion,
     health_score: latestScore?.score ?? null,
-    personalWins: db.prepare('SELECT * FROM personal_wins WHERE champion_id = ?').all(champion.id),
-    professionalWins: db.prepare('SELECT * FROM professional_wins WHERE champion_id = ?').all(champion.id),
+    personalWins: db.prepare('SELECT * FROM personal_wins WHERE champion_id = ? AND archived = 0').all(champion.id),
+    professionalWins: db.prepare('SELECT * FROM professional_wins WHERE champion_id = ? AND archived = 0').all(champion.id),
+    archivedPersonalWins: db.prepare('SELECT * FROM personal_wins WHERE champion_id = ? AND archived = 1').all(champion.id),
+    archivedProfessionalWins: db.prepare('SELECT * FROM professional_wins WHERE champion_id = ? AND archived = 1').all(champion.id),
     stageCriteria: getStageCriteria(champion.id),
     interactions: db.prepare('SELECT * FROM interactions WHERE champion_id = ? ORDER BY date DESC').all(champion.id),
     triggers: db.prepare('SELECT * FROM triggers WHERE champion_id = ? ORDER BY created_at DESC').all(champion.id),
@@ -259,8 +263,8 @@ export function getChampionCounts(championId) {
   const db = getDb()
   const interests = db.prepare('SELECT COUNT(*) as n FROM champion_subjects WHERE champion_id = ?').get(championId)?.n || 0
   const actions = db.prepare(`SELECT COUNT(*) as n FROM triggers WHERE champion_id = ? AND status = 'pending'`).get(championId)?.n || 0
-  const personalWins = db.prepare('SELECT COUNT(*) as n FROM personal_wins WHERE champion_id = ?').get(championId)?.n || 0
-  const professionalWins = db.prepare('SELECT COUNT(*) as n FROM professional_wins WHERE champion_id = ?').get(championId)?.n || 0
+  const personalWins = db.prepare('SELECT COUNT(*) as n FROM personal_wins WHERE champion_id = ? AND archived = 0').get(championId)?.n || 0
+  const professionalWins = db.prepare('SELECT COUNT(*) as n FROM professional_wins WHERE champion_id = ? AND archived = 0').get(championId)?.n || 0
   return { interests, actions, personalWins, professionalWins }
 }
 
@@ -1044,7 +1048,7 @@ export function updatePersonalWin(winId, data) {
 
 export function deletePersonalWin(winId) {
   const db = getDb()
-  db.prepare('DELETE FROM personal_wins WHERE id = ?').run(winId)
+  db.prepare('UPDATE personal_wins SET archived = 1 WHERE id = ?').run(winId)
 }
 
 export function updateProfessionalWin(winId, data) {
@@ -1055,7 +1059,7 @@ export function updateProfessionalWin(winId, data) {
 
 export function deleteProfessionalWin(winId) {
   const db = getDb()
-  db.prepare('DELETE FROM professional_wins WHERE id = ?').run(winId)
+  db.prepare('UPDATE professional_wins SET archived = 1 WHERE id = ?').run(winId)
 }
 
 /**
