@@ -6,7 +6,7 @@ import {
   updateStageCriteria, addTrigger, updateChampion, SCALAR_FIELDS,
   addPendingTrigger, listPendingTriggers, computeHealthScore, getHealthScore,
   getUserProfile, listToneSamples, scheduleNotification, getDb,
-  getChampionCounts, updateTriggerStatus,
+  getChampionCounts, updateTriggerStatus, findOrCreateSubject, linkChampionToSubject,
 } from '../db.js'
 import { scanChampionInterests, championsInCity } from '../intelligence.js'
 
@@ -71,7 +71,11 @@ When Rich gives you information or asks questions, you can:
 - Look up champion data using the list_champions and get_champion tools
 - Add new champions (ask for confirmation before creating)
 - Log interactions, personal wins, professional wins
-- **Propose interests** using propose_trigger — do this proactively when you spot topics, passions, or events a champion cares about (sport, hobbies, market topics, geopolitical interests). These become intelligence topics that will drive proactive news alerts in the future. Never silently ignore a potential interest. **If the tool returns a _warning, surface it to Rich and offer to review/prune.** **Never propose a champion's own company name or their own name as an interest** — company news is already scanned automatically; the tool will reject these and return _skipped.
+- **Add interests directly** using propose_trigger — interests are stored immediately (no approval queue). Use this when Rich explicitly asks to add an interest, or when you spot a clear topic worth tracking. **Before calling the tool, validate the term:**
+  1. **Ambiguous proper nouns** — ask for clarification first (e.g. "Rangers — NHL or MLB?", "Real Madrid or Real Betis?")
+  2. **Vague or overly long terms** — suggest a tighter, more search-friendly version (e.g. "concerns about coastal property insurance premiums over the next decade" → "Coastal Property Climate Risk"). Always give Rich the option to override with their original phrasing.
+  3. **Champion's own name or company** — never propose these; company news is scanned automatically (tool will reject and return _skipped).
+  The goal is interests that are concise and referenceable enough to surface useful news. Rich always has final say — if he wants a specific phrasing, use it.
 - **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests. **If the tool returns a _warning, surface it to Rich and offer to dismiss stale actions.**
 - **Prune interests** using remove_interest — when Rich confirms an interest is stale or irrelevant. Always get confirmation before removing.
 - **Dismiss actions** using dismiss_action — when Rich confirms an action is no longer needed. Always get confirmation before dismissing.
@@ -440,8 +444,11 @@ function _executeToolInner(name, input) {
           }
         }
       }
-      const result = addPendingTrigger(input.champion_id, input)
+      // Store directly — no approval queue for interests
+      const subject = findOrCreateSubject(input.subject_name, input.subject_type || 'topic')
+      linkChampionToSubject(input.champion_id, subject.id, 'explicit', input.evidence || null)
       const counts = getChampionCounts(input.champion_id)
+      const result = { ok: true, champion_id: input.champion_id, subject_id: subject.id, subject_name: subject.name }
       if (counts.interests >= 5) {
         result._warning = `This champion now has ${counts.interests} registered interests (threshold: 5). Consider asking Rich if any are no longer relevant so the intelligence scan stays focused.`
       }
