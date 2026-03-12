@@ -4,7 +4,7 @@ import {
   addPersonalWin, addProfessionalWin, confirmProfessionalWin,
   addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger,
   findOrCreateSubject, linkChampionToSubject,
-  deleteChampionInterest,
+  deleteChampionInterest, restoreChampionInterest,
   updatePersonalWin, deletePersonalWin, restorePersonalWin,
   updateProfessionalWin, deleteProfessionalWin, restoreProfessionalWin,
 } from '../db.js'
@@ -92,6 +92,11 @@ router.patch('/triggers/:triggerId/status', (req, res) => {
   res.json({ ok: true })
 })
 
+router.post('/triggers/:triggerId/restore', (req, res) => {
+  updateTriggerStatus(req.params.triggerId, 'pending')
+  res.json({ ok: true })
+})
+
 router.patch('/triggers/:triggerId', (req, res) => {
   updateTrigger(req.params.triggerId, req.body)
   res.json({ ok: true })
@@ -111,6 +116,11 @@ router.post('/:id/interests', (req, res) => {
 
 router.delete('/:id/interests/:subjectId', (req, res) => {
   deleteChampionInterest(req.params.id, req.params.subjectId)
+  res.json({ ok: true })
+})
+
+router.post('/:id/interests/:subjectId/restore', (req, res) => {
+  restoreChampionInterest(req.params.id, req.params.subjectId)
   res.json({ ok: true })
 })
 

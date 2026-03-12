@@ -127,6 +127,8 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
   const [editValues, setEditValues] = useState({})
   const [showArchivedPersonalWins, setShowArchivedPersonalWins] = useState(false)
   const [showArchivedProfessionalWins, setShowArchivedProfessionalWins] = useState(false)
+  const [showArchivedInterests, setShowArchivedInterests] = useState(false)
+  const [showDismissedActions, setShowDismissedActions] = useState(false)
 
   function openAddForm(section, defaults = {}) {
     setAddingSection(section)
@@ -474,6 +476,12 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                   style={{ color: '#59bbb7' }} title="Add interest">
                   <Plus className="h-3.5 w-3.5" />
                 </button>
+                {champion.archivedInterests?.length > 0 && (
+                  <button onClick={() => setShowArchivedInterests(v => !v)}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                    {showArchivedInterests ? 'Hide' : `+${champion.archivedInterests.length} archived`}
+                  </button>
+                )}
               </div>
               {addingSection === 'interest' && (
                 <div className="rounded-lg p-3 space-y-2 mb-3" style={{ background: '#f9f9f9', border: '1px solid #e0e0e0' }}>
@@ -575,6 +583,25 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                     These topics will drive proactive intelligence alerts when relevant news breaks.
                   </p>
                 </>
+              )}
+              {showArchivedInterests && champion.archivedInterests?.length > 0 && (
+                <div className="mt-2 space-y-1.5 opacity-60">
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Archived</p>
+                  <div className="flex flex-wrap gap-2">
+                    {champion.archivedInterests.map(interest => (
+                      <div key={interest.id} className="rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 bg-gray-100 border border-gray-200">
+                        <span className="font-medium text-gray-500">{interest.name}</span>
+                        <button
+                          onClick={async () => {
+                            await fetch(`/api/champions/${champion.id}/interests/${interest.id}/restore`, { method: 'POST' })
+                            if (onDataChanged) onDataChanged()
+                          }}
+                          className="text-xs text-hx-teal hover:underline"
+                        >Restore</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -895,6 +922,12 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                       style={{ color: '#59bbb7' }} title="Add action">
                       <Plus className="h-3.5 w-3.5" />
                     </button>
+                    {(champion.triggers || []).filter(t => t.status === 'dismissed').length > 0 && (
+                      <button onClick={() => setShowDismissedActions(v => !v)}
+                        className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                        {showDismissedActions ? 'Hide' : `+${(champion.triggers || []).filter(t => t.status === 'dismissed').length} dismissed`}
+                      </button>
+                    )}
                   </div>
                   {addingSection === 'action' && (
                     <div className="rounded-lg p-3 space-y-2 mb-3" style={{ background: '#f9f9f9', border: '1px solid #e0e0e0' }}>
@@ -994,6 +1027,23 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                       )
                     })}
                   </div>
+                  {showDismissedActions && (champion.triggers || []).filter(t => t.status === 'dismissed').length > 0 && (
+                    <div className="mt-3 space-y-1.5 opacity-60">
+                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Dismissed</p>
+                      {(champion.triggers || []).filter(t => t.status === 'dismissed').map(t => (
+                        <div key={t.id} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 flex items-center gap-2">
+                          <p className="text-sm text-gray-500 flex-1">{t.title}</p>
+                          <button
+                            onClick={async () => {
+                              await fetch(`/api/champions/triggers/${t.id}/restore`, { method: 'POST' })
+                              if (onDataChanged) onDataChanged()
+                            }}
+                            className="text-xs text-hx-teal hover:underline shrink-0"
+                          >Restore</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })()}

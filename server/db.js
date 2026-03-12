@@ -24,6 +24,7 @@ export function getDb() {
     try { db.exec(`ALTER TABLE champions ADD COLUMN user_edited_fields TEXT NOT NULL DEFAULT '[]'`) } catch {}
     try { db.exec(`ALTER TABLE personal_wins ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
     try { db.exec(`ALTER TABLE professional_wins ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
+    try { db.exec(`ALTER TABLE champion_subjects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`) } catch {}
   }
   return db
 }
@@ -69,8 +70,15 @@ function enrichChampion(champion) {
       SELECT s.id, s.name, s.type, cs.confidence, cs.evidence
       FROM champion_subjects cs
       JOIN subjects s ON s.id = cs.subject_id
-      WHERE cs.champion_id = ?
+      WHERE cs.champion_id = ? AND cs.archived = 0
       ORDER BY cs.confidence DESC, s.name ASC
+    `).all(champion.id),
+    archivedInterests: db.prepare(`
+      SELECT s.id, s.name, s.type, cs.confidence, cs.evidence
+      FROM champion_subjects cs
+      JOIN subjects s ON s.id = cs.subject_id
+      WHERE cs.champion_id = ? AND cs.archived = 1
+      ORDER BY s.name ASC
     `).all(champion.id),
   }
 }
@@ -1037,7 +1045,12 @@ export function markTriggerFired(id) {
 
 export function deleteChampionInterest(championId, subjectId) {
   const db = getDb()
-  db.prepare('DELETE FROM champion_subjects WHERE champion_id = ? AND subject_id = ?').run(championId, subjectId)
+  db.prepare('UPDATE champion_subjects SET archived = 1 WHERE champion_id = ? AND subject_id = ?').run(championId, subjectId)
+}
+
+export function restoreChampionInterest(championId, subjectId) {
+  const db = getDb()
+  db.prepare('UPDATE champion_subjects SET archived = 0 WHERE champion_id = ? AND subject_id = ?').run(championId, subjectId)
 }
 
 export function updatePersonalWin(winId, data) {
