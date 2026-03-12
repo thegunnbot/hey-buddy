@@ -74,7 +74,7 @@ export async function scanChampionInterests(championId, days = 2) {
     const interests = db.prepare(`
       SELECT s.id, s.name, s.type FROM champion_subjects cs
       JOIN subjects s ON s.id = cs.subject_id
-      WHERE cs.champion_id = ?
+      WHERE cs.champion_id = ? AND cs.archived = 0
     `).all(champion.id)
     for (const interest of interests) {
       const raw = await fetchNewsForTopic(interest.name, days)
