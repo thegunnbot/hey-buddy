@@ -71,7 +71,7 @@ When Rich gives you information or asks questions, you can:
 - Look up champion data using the list_champions and get_champion tools
 - Add new champions (ask for confirmation before creating)
 - Log interactions, personal wins, professional wins
-- **Propose interests** using propose_trigger — do this proactively when you spot topics, passions, or events a champion cares about (sport, hobbies, market topics, geopolitical interests). These become intelligence topics that will drive proactive news alerts in the future. Never silently ignore a potential interest. **If the tool returns a _warning, surface it to Rich and offer to review/prune.**
+- **Propose interests** using propose_trigger — do this proactively when you spot topics, passions, or events a champion cares about (sport, hobbies, market topics, geopolitical interests). These become intelligence topics that will drive proactive news alerts in the future. Never silently ignore a potential interest. **If the tool returns a _warning, surface it to Rich and offer to review/prune.** **Never propose a champion's own company name or their own name as an interest** — company news is already scanned automatically; the tool will reject these and return _skipped.
 - **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests. **If the tool returns a _warning, surface it to Rich and offer to dismiss stale actions.**
 - **Prune interests** using remove_interest — when Rich confirms an interest is stale or irrelevant. Always get confirmation before removing.
 - **Dismiss actions** using dismiss_action — when Rich confirms an action is no longer needed. Always get confirmation before dismissing.
@@ -422,6 +422,24 @@ function _executeToolInner(name, input) {
       return result
     }
     case 'propose_trigger': {
+      // Guard: reject if subject matches the champion's own name or company (already covered by intelligence scan)
+      const db = getDb()
+      const champ = db.prepare('SELECT name, company FROM champions WHERE id = ?').get(input.champion_id)
+      if (champ) {
+        const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const subjectNorm = normalize(input.subject_name)
+        const nameNorm = normalize(champ.name)
+        const companyNorm = normalize(champ.company)
+        if (
+          (companyNorm && (subjectNorm === companyNorm || subjectNorm.includes(companyNorm) || companyNorm.includes(subjectNorm))) ||
+          (nameNorm && subjectNorm === nameNorm)
+        ) {
+          return {
+            _skipped: true,
+            reason: `"${input.subject_name}" matches this champion's own name or company — intelligence already covers it automatically via company news scanning. No need to add as an explicit interest.`,
+          }
+        }
+      }
       const result = addPendingTrigger(input.champion_id, input)
       const counts = getChampionCounts(input.champion_id)
       if (counts.interests >= 5) {
