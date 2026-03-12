@@ -259,7 +259,9 @@ export function getChampionCounts(championId) {
   const db = getDb()
   const interests = db.prepare('SELECT COUNT(*) as n FROM champion_subjects WHERE champion_id = ?').get(championId)?.n || 0
   const actions = db.prepare(`SELECT COUNT(*) as n FROM triggers WHERE champion_id = ? AND status = 'pending'`).get(championId)?.n || 0
-  return { interests, actions }
+  const personalWins = db.prepare('SELECT COUNT(*) as n FROM personal_wins WHERE champion_id = ?').get(championId)?.n || 0
+  const professionalWins = db.prepare('SELECT COUNT(*) as n FROM professional_wins WHERE champion_id = ?').get(championId)?.n || 0
+  return { interests, actions, personalWins, professionalWins }
 }
 
 export function addTrigger(championId, data) {

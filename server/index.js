@@ -170,13 +170,15 @@ app.post('/api/intelligence/review-check', async (req, res) => {
     const overThreshold = champions
       .filter(c => !c.archived)
       .map(c => ({ ...c, counts: getChampionCounts(c.id) }))
-      .filter(c => c.counts.interests >= 5 || c.counts.actions >= 5)
+      .filter(c => c.counts.interests >= 5 || c.counts.actions >= 5 || c.counts.personalWins >= 5 || c.counts.professionalWins >= 5)
     if (!overThreshold.length) return res.json({ ok: true, sent: false, message: 'All champions within threshold.' })
     const lines = ['🔍 *Hey Buddy — Monthly Champion Review*\n']
     for (const c of overThreshold) {
       const parts = []
       if (c.counts.interests >= 5) parts.push(`${c.counts.interests} interests`)
       if (c.counts.actions >= 5) parts.push(`${c.counts.actions} open actions`)
+      if (c.counts.personalWins >= 5) parts.push(`${c.counts.personalWins} personal wins`)
+      if (c.counts.professionalWins >= 5) parts.push(`${c.counts.professionalWins} professional wins`)
       lines.push(`*${c.name}* (${c.company}) — ${parts.join(', ')} — worth a review`)
     }
     lines.push('\nOpen Hey Buddy to review and prune.')

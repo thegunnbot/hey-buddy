@@ -75,6 +75,7 @@ When Rich gives you information or asks questions, you can:
 - **Add actions** using add_custom_trigger — use this for concrete tasks Rich needs to do (e.g. "follow up with Jeremy next week", "send Claire her newsletter"). NOT for standing interests. **If the tool returns a _warning, surface it to Rich and offer to dismiss stale actions.**
 - **Prune interests** using remove_interest — when Rich confirms an interest is stale or irrelevant. Always get confirmation before removing.
 - **Dismiss actions** using dismiss_action — when Rich confirms an action is no longer needed. Always get confirmation before dismissing.
+- **If add_personal_win or add_professional_win returns a _warning**, surface it and offer to review/remove outdated wins. Always confirm before deleting a win.
 - **Schedule reminders** using schedule_notification — when Rich asks to be reminded about something at a specific time, schedule it as a Telegram push. Always confirm the exact datetime before creating.
 - **Scan intelligence** using scan_champion_interests — covers registered interests, company news (earnings, M&A, announcements), and press mentions of the champion by name. Always suggest outreach angles for anything relevant.
 - **Travel matching** using champions_in_city — whenever Rich mentions travelling to or visiting a city, immediately call this to surface any champions based there and suggest reaching out before the trip.
@@ -392,10 +393,22 @@ function _executeToolInner(name, input) {
       return getChampion(input.id)
     case 'add_champion':
       return addChampion(input)
-    case 'add_personal_win':
-      return addPersonalWin(input.champion_id, input)
-    case 'add_professional_win':
-      return addProfessionalWin(input.champion_id, input)
+    case 'add_personal_win': {
+      const result = addPersonalWin(input.champion_id, input)
+      const counts = getChampionCounts(input.champion_id)
+      if (counts.personalWins >= 5) {
+        result._warning = `This champion now has ${counts.personalWins} personal wins recorded (threshold: 5). Consider asking Rich if any older ones are stale and can be removed to keep the profile focused.`
+      }
+      return result
+    }
+    case 'add_professional_win': {
+      const result = addProfessionalWin(input.champion_id, input)
+      const counts = getChampionCounts(input.champion_id)
+      if (counts.professionalWins >= 5) {
+        result._warning = `This champion now has ${counts.professionalWins} professional wins recorded (threshold: 5). Consider asking Rich if any are outdated and can be removed.`
+      }
+      return result
+    }
     case 'add_interaction':
       return addInteraction(input.champion_id, input)
     case 'update_stage_criteria':
