@@ -380,7 +380,13 @@ export default function Home({ champions, loading, onChampionClick, onDataChange
         </div>
 
         {/* Pending trigger proposals */}
-        <PendingTriggers onResolved={onDataChanged} />
+        <PendingTriggers
+          onResolved={onDataChanged}
+          onChampionClick={(id) => {
+            const c = champions.find(ch => ch.id === id)
+            if (c) onChampionClick(c)
+          }}
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
