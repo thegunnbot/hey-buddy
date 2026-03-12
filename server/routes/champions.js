@@ -5,8 +5,8 @@ import {
   addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger,
   findOrCreateSubject, linkChampionToSubject,
   deleteChampionInterest,
-  updatePersonalWin, deletePersonalWin,
-  updateProfessionalWin, deleteProfessionalWin,
+  updatePersonalWin, deletePersonalWin, restorePersonalWin,
+  updateProfessionalWin, deleteProfessionalWin, restoreProfessionalWin,
 } from '../db.js'
 
 const router = Router()
@@ -25,6 +25,10 @@ router.delete('/personal-wins/:winId', (req, res) => {
   deletePersonalWin(req.params.winId)
   res.json({ ok: true })
 })
+router.post('/personal-wins/:winId/restore', (req, res) => {
+  restorePersonalWin(req.params.winId)
+  res.json({ ok: true })
+})
 
 // Professional wins — must be before /:id
 router.patch('/professional-wins/:winId', (req, res) => {
@@ -33,6 +37,10 @@ router.patch('/professional-wins/:winId', (req, res) => {
 })
 router.delete('/professional-wins/:winId', (req, res) => {
   deleteProfessionalWin(req.params.winId)
+  res.json({ ok: true })
+})
+router.post('/professional-wins/:winId/restore', (req, res) => {
+  restoreProfessionalWin(req.params.winId)
   res.json({ ok: true })
 })
 

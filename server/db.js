@@ -1051,6 +1051,11 @@ export function deletePersonalWin(winId) {
   db.prepare('UPDATE personal_wins SET archived = 1 WHERE id = ?').run(winId)
 }
 
+export function restorePersonalWin(winId) {
+  const db = getDb()
+  db.prepare('UPDATE personal_wins SET archived = 0 WHERE id = ?').run(winId)
+}
+
 export function updateProfessionalWin(winId, data) {
   const db = getDb()
   db.prepare('UPDATE professional_wins SET description = ?, confirmed = ?, updated_at = ? WHERE id = ?')
@@ -1060,6 +1065,11 @@ export function updateProfessionalWin(winId, data) {
 export function deleteProfessionalWin(winId) {
   const db = getDb()
   db.prepare('UPDATE professional_wins SET archived = 1 WHERE id = ?').run(winId)
+}
+
+export function restoreProfessionalWin(winId) {
+  const db = getDb()
+  db.prepare('UPDATE professional_wins SET archived = 0 WHERE id = ?').run(winId)
 }
 
 /**
