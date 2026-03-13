@@ -170,6 +170,9 @@ export default function Methodology() {
             Event-driven triggers (e.g. sports results relevant to the champion, company news, internal milestones)
             always override cadence rules — act on them when they arise.
           </p>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Cadence thresholds (how many days before "approaching" and "overdue" alerts fire) are configurable in Settings. The values above are the defaults.
+          </p>
         </section>
 
         {/* Core principles */}

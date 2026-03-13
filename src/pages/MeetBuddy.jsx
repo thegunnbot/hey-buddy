@@ -59,15 +59,15 @@ export default function MeetBuddy() {
         <Section icon={Code2} color="#4e70f8" title="Tech stack">
           <div className="grid grid-cols-2 gap-3">
             <Card icon={Globe} accent="#49deff" title="Frontend"
-              body="React 18 + Vite, Tailwind CSS utility styling with hx brand tokens, Lucide icons. Single-page app at localhost:5173 proxying API calls to the backend." />
+              body="React 18 + Vite, Tailwind CSS utility styling with hx brand tokens, Lucide icons. Single-page app at localhost:5173 (or via ngrok static domain externally) proxying API calls to the backend. Also managed by PM2." />
             <Card icon={Database} accent="#59bbb7" title="Backend"
-              body="Node.js + Express, running on port 3001. ES modules throughout. Rate limiting (60 req/min general, 20 req/min chat). Auth0 middleware stub ready for deployment." />
+              body="Node.js + Express, running on port 3001. ES modules throughout. Rate limiting (60 req/min general, 20 req/min chat). Managed by PM2 — auto-restarts on crash, auto-starts on Mac login. Auth0 middleware stub ready for deployment." />
             <Card icon={Database} accent="#ee6c5b" title="Database"
               body="SQLite for local development (better-sqlite3). Schema is clean and portable — designed for a straight migration to PostgreSQL at production deployment on Railway or Render." />
             <Card icon={MessageSquare} accent="#f5a623" title="Telegram bot"
               body="Standalone @heybuddy_hx_bot via node-telegram-bot-api. Long-polling locally, webhook at production. Full access control with inline approval buttons and admin commands." />
             <Card icon={Repeat2} accent="#848d9a" title="Internal scheduler"
-              body="node-cron for recurring jobs (e.g. monthly travel check-in). No dependency on any external orchestration — Hey Buddy runs entirely standalone." />
+              body="node-cron powers four recurring jobs: daily 8am cadence alerts (overdue/approaching champions), every-15-min scheduled notification firing, nightly 7pm sports fixture check, and monthly travel check-in. Hey Buddy also fires push events to an OpenClaw webhook on new feedback — no polling required." />
             <Card icon={Key} accent="#ee6c5b" title="Security"
               body="Prompt injection defences, XML transcript sandboxing, rate limiting, API key auth for agent-to-agent calls. Auth0 JWT stub ready to activate at deployment." />
           </div>
@@ -97,7 +97,7 @@ export default function MeetBuddy() {
         <Section icon={Brain} color="#ee6c5b" title="How Hey Buddy uses AI">
           <div className="space-y-3">
             <Card icon={MessageSquare} accent="#ee6c5b" title="Agentic chat loop"
-              body="The chat interface uses Claude (claude-sonnet-4-6) with a full tool-use loop. Buddy can read and write champion data directly — adding interactions, logging wins, proposing triggers, updating stage criteria — all from natural conversation. No form-filling required." />
+              body="The web chat uses Claude Sonnet (claude-sonnet-4-6) with a full tool-use loop. The Telegram bot uses Claude Haiku for cost efficiency. Both can read and write champion data directly — adding interactions, logging wins, proposing triggers, updating stage criteria — all from natural conversation. No form-filling required." />
             <Card icon={Layers} accent="#59bbb7" title="Personalised system prompt"
               body="Before every message, the system prompt is dynamically built from the user's profile and tone samples. Claude knows who the user is, how they write, what they care about, and what channel they prefer — so every suggestion feels like it came from the user, not a template." />
             <Card icon={Zap} accent="#49deff" title="Short/long message generation"
@@ -117,6 +117,8 @@ export default function MeetBuddy() {
               body="Every interaction — via the web app or Telegram — is handled by an agentic Claude loop with access to your full champion graph. Ask in natural language: 'Who should I reach out to this week?', 'Add a trigger for Sarah when Chelsea play Arsenal', 'Log that I had dinner with James last night'. Buddy reads, reasons, and writes." />
             <Card icon={Key} accent="#4e70f8" title="API access for other agents"
               body="Hey Buddy exposes a REST API secured with an API key (X-HeyBuddy-Key header). Any external agent — including a personal AI assistant — can query or update Hey Buddy programmatically. Pass X-HeyBuddy-Agent-Id to tag which agent is calling. Useful for orchestration: a personal assistant can surface champion context without the user switching tools." />
+            <Card icon={Globe} accent="#59bbb7" title="OpenClaw webhook integration"
+              body="Hey Buddy pushes real-time events to an OpenClaw webhook (POST /hooks/agent) rather than relying on polling. New feedback triggers an immediate agent run which analyses it and sends Rich a Telegram alert with recommendations. The webhook URL is environment-variable driven — ready for Tailscale or any future hosting without code changes." />
             <Card icon={Globe} accent="#59bbb7" title="MCP — coming soon"
               body="Hey Buddy's tool definitions (get_champion, add_interaction, list_champions, propose_trigger and more) are already structured close to the Model Context Protocol standard. A future MCP server will expose these as first-class tools to any Claude-based agent — allowing direct tool calls rather than going through the chat API wrapper." />
           </div>
