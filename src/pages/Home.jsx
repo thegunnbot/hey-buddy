@@ -1,5 +1,5 @@
 import { AlertCircle, Clock, Zap, Trophy, MessageSquare, Copy, Loader2, Mail, Pencil, Bug, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import FeedbackForm from '../components/FeedbackForm'
 import clsx from 'clsx'
 import StageTag from '../components/StageTag'
@@ -60,6 +60,14 @@ function buildActions(champions) {
   return actions.sort((a, b) => a.priority - b.priority).slice(0, 6)
 }
 
+const SNOOZE_OPTIONS = [
+  { label: 'Tomorrow', days: 1 },
+  { label: '3 days', days: 3 },
+  { label: '1 week', days: 7 },
+  { label: '2 weeks', days: 14 },
+  { label: '1 month', days: 30 },
+]
+
 function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTaken }) {
   const { icon: Icon, color, bg, border } = actionTypeConfig[action.type] || actionTypeConfig.trigger
   const [channel, setChannel] = useState('short') // short | long
@@ -67,6 +75,8 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
   const [loadingLong, setLoadingLong] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingTrigger, setEditingTrigger] = useState(false)
+  const [showSnoozeMenu, setShowSnoozeMenu] = useState(false)
+  const snoozeRef = useRef(null)
   const [triggerEditValues, setTriggerEditValues] = useState({
     title: action.suggestedAction || '',
     description: action.description || '',
@@ -101,6 +111,19 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'Note', notes: 'Marked done from action card', date: new Date().toISOString().split('T')[0] }),
+      }).catch(() => {})
+    }
+    onActionTaken(action.id)
+  }
+
+  async function handleSnooze(days) {
+    setShowSnoozeMenu(false)
+    if (action.triggerId) {
+      const newFireAt = new Date(Date.now() + days * 86400000).toISOString()
+      await fetch(`/api/champions/triggers/${action.triggerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fire_at: newFireAt }),
       }).catch(() => {})
     }
     onActionTaken(action.id)
@@ -216,11 +239,27 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
         </div>
       )}
 
-      <div className="ml-7 flex gap-2">
+      <div className="ml-7 flex gap-2 items-center">
         <button onClick={() => handleAction('done')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           style={{ background: '#0f1924', color: '#59bbb7' }}>Mark done</button>
-        <button onClick={() => handleAction('snooze')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
-          style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>Snooze</button>
+        <div ref={snoozeRef} className="relative"
+          onMouseEnter={() => setShowSnoozeMenu(true)}
+          onMouseLeave={() => setShowSnoozeMenu(false)}>
+          <button className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+            style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>Snooze</button>
+          {showSnoozeMenu && (
+            <div className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg shadow-lg overflow-hidden"
+              style={{ background: '#fff', border: '1px solid #e0e0e0', minWidth: '110px' }}>
+              {SNOOZE_OPTIONS.map(opt => (
+                <button key={opt.days} onClick={() => handleSnooze(opt.days)}
+                  className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+                  style={{ color: '#0f1924' }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button onClick={() => handleAction('dismiss')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>Dismiss</button>
       </div>
