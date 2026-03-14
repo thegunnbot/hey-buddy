@@ -2,7 +2,7 @@ import { Router } from 'express'
 import {
   listChampions, getChampion, addChampion, updateChampion,
   addPersonalWin, addProfessionalWin, confirmProfessionalWin,
-  addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger,
+  addInteraction, updateStageCriteria, addTrigger, updateTriggerStatus, updateTrigger, deleteTrigger,
   findOrCreateSubject, linkChampionToSubject,
   deleteChampionInterest, restoreChampionInterest,
   updatePersonalWin, deletePersonalWin, restorePersonalWin,
@@ -100,6 +100,11 @@ router.post('/triggers/:triggerId/restore', (req, res) => {
 
 router.patch('/triggers/:triggerId', (req, res) => {
   updateTrigger(req.params.triggerId, req.body)
+  res.json({ ok: true })
+})
+
+router.delete('/triggers/:triggerId', (req, res) => {
+  deleteTrigger(req.params.triggerId)
   res.json({ ok: true })
 })
 

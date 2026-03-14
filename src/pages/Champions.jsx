@@ -1072,6 +1072,12 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                                   <button onClick={() => startEditTrigger(t)} title="Edit" className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
                                     <Pencil className="h-3 w-3" />
                                   </button>
+                                  <button onClick={async () => {
+                                    await fetch(`/api/champions/triggers/${t.id}`, { method: 'DELETE' }).catch(() => {})
+                                    if (onDataChanged) onDataChanged()
+                                  }} title="Delete" className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
                                 </div>
                               </div>
                               {t.description && t.description !== t.title && (
@@ -1080,6 +1086,30 @@ function ChampionDetail({ champion, onArchiveToggle, onDataChanged }) {
                               {t.suggested_message && (
                                 <p className="text-xs italic text-gray-400 border-t border-gray-100 pt-1.5">"{t.suggested_message}"</p>
                               )}
+                              <div className="flex gap-2 pt-1.5">
+                                <button onClick={async () => {
+                                  await fetch(`/api/champions/triggers/${t.id}/status`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: 'acted' }),
+                                  }).catch(() => {})
+                                  if (onDataChanged) onDataChanged()
+                                }} className="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
+                                  style={{ background: '#0f1924', color: '#59bbb7' }}>
+                                  Mark done
+                                </button>
+                                <button onClick={async () => {
+                                  await fetch(`/api/champions/triggers/${t.id}/status`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: 'dismissed' }),
+                                  }).catch(() => {})
+                                  if (onDataChanged) onDataChanged()
+                                }} className="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
+                                  style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>
+                                  Dismiss
+                                </button>
+                              </div>
                             </>
                           )}
                         </div>

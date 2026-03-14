@@ -311,6 +311,11 @@ export function updateTrigger(triggerId, data) {
   db.prepare(sql).run(...updates.map(f => data[f] ?? null), triggerId)
 }
 
+export function deleteTrigger(triggerId) {
+  const db = getDb()
+  db.prepare(`DELETE FROM triggers WHERE id = ?`).run(triggerId)
+}
+
 // ── Bot user allowlist ─────────────────────────────────────
 
 export function isApprovedUser(platform, platformUserId) {
