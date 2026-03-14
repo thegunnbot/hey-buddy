@@ -77,6 +77,7 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
   const [editingTrigger, setEditingTrigger] = useState(false)
   const [showSnoozeMenu, setShowSnoozeMenu] = useState(false)
   const snoozeRef = useRef(null)
+  const snoozeHideTimer = useRef(null)
   const [triggerEditValues, setTriggerEditValues] = useState({
     title: action.suggestedAction || '',
     description: action.description || '',
@@ -243,13 +244,13 @@ function ActionCard({ action, onChampionClick, onFeedbackTriggered, onActionTake
         <button onClick={() => handleAction('done')} className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
           style={{ background: '#0f1924', color: '#59bbb7' }}>Mark done</button>
         <div ref={snoozeRef} className="relative"
-          onMouseEnter={() => setShowSnoozeMenu(true)}
-          onMouseLeave={() => setShowSnoozeMenu(false)}>
+          onMouseEnter={() => { clearTimeout(snoozeHideTimer.current); setShowSnoozeMenu(true) }}
+          onMouseLeave={() => { snoozeHideTimer.current = setTimeout(() => setShowSnoozeMenu(false), 150) }}>
           <button className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
             style={{ background: '#fff', color: '#505862', border: '1px solid #e0e0e0' }}>Snooze</button>
           {showSnoozeMenu && (
-            <div className="absolute bottom-full left-0 mb-1.5 z-50 rounded-lg shadow-lg overflow-hidden"
-              style={{ background: '#fff', border: '1px solid #e0e0e0', minWidth: '110px' }}>
+            <div className="absolute bottom-full left-0 z-50 rounded-lg shadow-lg overflow-hidden"
+              style={{ background: '#fff', border: '1px solid #e0e0e0', minWidth: '110px', marginBottom: '2px' }}>
               {SNOOZE_OPTIONS.map(opt => (
                 <button key={opt.days} onClick={() => handleSnooze(opt.days)}
                   className="w-full text-left px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
