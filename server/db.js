@@ -866,7 +866,7 @@ export function seedMockData() {
   // Seed Rich as admin
   const richId = process.env.TELEGRAM_RICH_ID
   if (richId) {
-    approveUser('telegram', richId, 'rich', 'Rich Gunn', richId, 'admin')
+    approveUser('telegram', richId, 'owner', 'Owner', richId, 'admin')
   }
 }
 

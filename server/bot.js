@@ -33,7 +33,7 @@ export function startBot() {
   }
 
   bot = new TelegramBot(TOKEN, { polling: true })
-  console.log('🤖 Hey Buddy Telegram bot started (@heybuddy_hx_bot)')
+  console.log('🤖 Hey Buddy Telegram bot started')
 
   bot.on('message', handleMessage)
   bot.on('callback_query', handleCallback)
@@ -212,7 +212,7 @@ async function handleAdminCommand(msg) {
       // User hasn't started the bot yet — that's fine
     }
     return bot.sendMessage(chatId,
-      `✅ Pre-approved user ${targetId}.\n\nIf they've already started the bot they'll receive a notification. Otherwise, ask them to message @heybuddy_hx_bot to get started.`
+      `✅ Pre-approved user ${targetId}.\n\nIf they've already started the bot they'll receive a notification. Otherwise, ask them to start the bot to get started.`
     )
   }
 

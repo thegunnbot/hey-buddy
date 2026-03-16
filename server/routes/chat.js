@@ -14,7 +14,7 @@ const router = Router()
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-export const SYSTEM_PROMPT = `You are Hey Buddy, an intelligent champion relationship assistant for Rich Gunn, a senior sales executive at an insurance technology company.
+export const SYSTEM_PROMPT = `You are Hey Buddy, an intelligent champion relationship assistant for a senior B2B sales executive.
 
 Your job is to help Rich build authentic champion relationships using the Hey Buddy methodology — a framework based on MEDDICC principles.
 
