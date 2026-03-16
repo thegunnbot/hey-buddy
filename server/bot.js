@@ -149,7 +149,7 @@ async function handleMessage(msg) {
       `• "Who should I reach out to today?"\n` +
       `• "Log a call with James — he mentioned Chelsea"\n` +
       `• "What's my weakest relationship right now?"\n` +
-      `• "Add Sarah Clarke at Lloyd's as a new prospect"\n` +
+      `• "Add Sarah Clarke at Pemberton Specialty as a new prospect"\n` +
       `• Paste a call transcript → I'll extract champion intel\n\n` +
       `Type /new to start a fresh conversation.\n\n` +
       `Just talk naturally.`

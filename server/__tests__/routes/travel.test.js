@@ -53,8 +53,8 @@ describe('POST /api/travel', () => {
   })
 
   it('finds champions in the given city and queues triggers', async () => {
-    addChampion({ name: 'London Champ', company: 'Aviva', role: 'CTO', type: 'prospect', location_city: 'London', location_country: 'UK' })
-    addChampion({ name: 'Paris Champ', company: 'AXA', role: 'CTO', type: 'prospect', location_city: 'Paris', location_country: 'France' })
+    addChampion({ name: 'London Champ', company: 'Meridian Insurance', role: 'CTO', type: 'prospect', location_city: 'London', location_country: 'UK' })
+    addChampion({ name: 'Paris Champ', company: 'Apex General', role: 'CTO', type: 'prospect', location_city: 'Paris', location_country: 'France' })
     const app = await makeApp()
     const res = await request(app).post('/api/travel').send({ city: 'London', country: 'UK', travel_note: 'Visiting next week' })
     expect(res.status).toBe(200)

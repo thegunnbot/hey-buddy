@@ -5,12 +5,12 @@ _Version 0.1 — Mar 5, 2026_
 
 ## 1. Vision & Principles
 
-**Hey Buddy** is a champion relationship intelligence system for enterprise sales. It helps Rich build authentic, deep relationships with champions — moving them from Identified through to Leverage — by acting as his memory, accountability partner, and opportunity spotter.
+**Hey Buddy** is a champion relationship intelligence system for enterprise sales. It helps the user build authentic, deep relationships with champions — moving them from Identified through to Leverage — by acting as his memory, accountability partner, and opportunity spotter.
 
 **Core principles:**
-- Rich makes every decision and sends every message. Hey Buddy suggests, prompts, and prepares — it never acts autonomously.
-- Relationships are built authentically. The system surfaces opportunities; Rich brings the humanity.
-- Push-first. Hey Buddy comes to Rich with what matters. He doesn't have to go looking.
+- the user makes every decision and sends every message. Hey Buddy suggests, prompts, and prepares — it never acts autonomously.
+- Relationships are built authentically. The system surfaces opportunities; the user brings the humanity.
+- Push-first. Hey Buddy comes to the user with what matters. He doesn't have to go looking.
 - Start small, scale deliberately. MVP handles 10 champions (5 prospects, 5 customers). Architected for 30.
 - Built to be ported. MVP runs locally with Telegram. Designed for redeployment on a work estate with Teams and enterprise integrations.
 
@@ -19,7 +19,7 @@ _Version 0.1 — Mar 5, 2026_
 ## 2. The Champion Model
 
 ### Who is a champion?
-A champion is a person inside a prospect or customer organisation who has power, influence, and credibility — and who can sell on Rich's behalf when he's not in the room. Building a champion is about developing a genuine, mutual relationship: understanding what they care about personally and professionally, and investing in those things over time.
+A champion is a person inside a prospect or customer organisation who has power, influence, and credibility — and who can sell on the user's behalf when he's not in the room. Building a champion is about developing a genuine, mutual relationship: understanding what they care about personally and professionally, and investing in those things over time.
 
 ### Champion types
 - **Prospect champion** — an exec at an active prospect account. Relationship has a deal endpoint.
@@ -32,7 +32,7 @@ A champion is a person inside a prospect or customer organisation who has power,
 - Stage (Identified / Building / Test / Leverage)
 - Deal status (pre-SQO / post-SQO / closed-won / closed-lost)
 - **Personal wins** — things they care about outside work: sports teams, hobbies, family context, personal ambitions
-- **Professional wins** — how Rich's project ties to their career goals and objectives
+- **Professional wins** — how the user's project ties to their career goals and objectives
 - Pain — the specific problem they're trying to solve in their role
 - Internal context — org dynamics, key stakeholders, blockers (added as discovered)
 - Interaction log — all touchpoints: date, type (call/email/WhatsApp/event), notes, messages sent
@@ -55,7 +55,7 @@ _Bar: Do I know enough about this person to invest in them?_
 Required:
 1. Have had a 1-1 conversation (not just a group call)
 2. Identified at least one **personal win** — something they care about outside the project (sport, hobby, ambition, family context)
-3. Identified at least one **professional win** — how Rich's project ties to their career goals or objectives
+3. Identified at least one **professional win** — how the user's project ties to their career goals or objectives
 
 Nice to have:
 - Personal contact (mobile/WhatsApp)
@@ -67,7 +67,7 @@ _Bar: Have they shown real investment in me?_
 
 Required:
 1. They've **explicitly confirmed their professional win** — said it out loud, not just implied
-2. They've shared internal context Rich couldn't get elsewhere (org dynamics, blockers, key stakeholders)
+2. They've shared internal context the user couldn't get elsewhere (org dynamics, blockers, key stakeholders)
 3. At least one interaction in a **non-sales context** (dinner, event, informal call)
 4. Have their **personal contact** (mobile/WhatsApp)
 
@@ -77,9 +77,9 @@ Required:
 _Bar: Have they proven they'll act for me when I'm not in the room?_
 
 Required:
-1. Rich gave them a specific task and they **delivered**
+1. the user gave them a specific task and they **delivered**
 2. They've proactively shared competitive or deal-critical intelligence
-3. They've shown up for Rich in a way that **wasn't directly in their interest**
+3. They've shown up for the user in a way that **wasn't directly in their interest**
 
 ---
 
@@ -87,10 +87,10 @@ Required:
 _Bar: Are they actively selling for me — and is the personal relationship being maintained?_
 
 Required:
-1. They're influencing internal discussions without Rich present
+1. They're influencing internal discussions without the user present
 2. They're connected to deal acceleration (timeline, access, stakeholder alignment)
 3. Active **personal win maintenance** — ongoing investment in the personal relationship (events, shared interests, meaningful moments)
-4. Identifying expansion or new opportunity signals on Rich's behalf
+4. Identifying expansion or new opportunity signals on the user's behalf
 
 ---
 
@@ -111,7 +111,7 @@ Required:
 
 ## 5. Trigger Engine
 
-The trigger engine monitors signals and surfaces outreach opportunities to Rich via Telegram (MVP). Rich always approves before anything is sent.
+The trigger engine monitors signals and surfaces outreach opportunities to the user via Telegram (MVP). the user always approves before anything is sent.
 
 ### Trigger types (MVP)
 
@@ -119,16 +119,16 @@ The trigger engine monitors signals and surfaces outreach opportunities to Rich 
 - Chelsea FC result → suggest message to any champion who supports Chelsea
 - England football / rugby result or fixture → same logic
 - Custom sport per champion (e.g., champion supports Tottenham, follows golf)
-- Upcoming sporting event relevant to a champion → suggest Rich attends with them
+- Upcoming sporting event relevant to a champion → suggest the user attends with them
 
 **Cadence triggers**
-- Champion approaching amber/red status → nudge Rich to make contact
+- Champion approaching amber/red status → nudge the user to make contact
 
 **Calendar triggers**
 - Meeting with a known champion in the next 30 minutes → push pre-call brief
 
 **Transcript triggers**
-- New transcript uploaded → extract personal/professional wins, flag for Rich to validate
+- New transcript uploaded → extract personal/professional wins, flag for the user to validate
 
 ### Trigger types (v2)
 - Company/industry news relevant to a champion's organisation
@@ -141,7 +141,7 @@ The trigger engine monitors signals and surfaces outreach opportunities to Rich 
 ```
 🎯 Hey Buddy — Outreach Opportunity
 
-Champion: James Mitchell (Aviva, CTO)
+Champion: James Mitchell (Meridian Insurance, CTO)
 Trigger: Chelsea beat Man City 2-1 last night
 Stage: Building | Last contact: 12 days ago
 
@@ -150,7 +150,7 @@ Suggested message:
 
 Reply YES to send, EDIT to tweak, or SKIP to dismiss.
 ```
-_(MVP: Rich sends manually. v2: YES triggers send via WhatsApp/email integration.)_
+_(MVP: the user sends manually. v2: YES triggers send via WhatsApp/email integration.)_
 
 ---
 
@@ -173,7 +173,7 @@ Triggered 30 minutes before any calendar event that includes a known champion.
 
 ### 7a. Telegram (MVP messaging layer)
 - Receives push nudges (triggers, cadence alerts, pre-call briefs)
-- Rich can reply to interact: YES / EDIT / SKIP / INFO
+- the user can reply to interact: YES / EDIT / SKIP / INFO
 - On Teams when ported to work estate
 
 ### 7b. Web Dashboard
@@ -195,7 +195,7 @@ Triggered 30 minutes before any calendar event that includes a known champion.
 
 **Tab 3: Methodology**
 - The Hey Buddy framework: stage definitions, criteria checklists, cadence rules
-- Editable — Rich can customise criteria over time
+- Editable — the user can customise criteria over time
 - Reference material for onboarding future users
 
 **Tab 4: Settings** _(stubbed in MVP)_
@@ -215,7 +215,7 @@ Triggered 30 minutes before any calendar event that includes a known champion.
 | Messaging | Telegram (via OpenClaw) | Microsoft Teams |
 | AI | Anthropic Claude (via OpenClaw) | Same |
 | Auth | None (local MVP) | SSO / work identity |
-| Hosting | Local (Rich's machine) | Work cloud estate |
+| Hosting | Local (the user's machine) | Work cloud estate |
 | Integrations | None | Salesforce, Gong, Metaview, Notion, LinkedIn |
 
 **Data storage:** Champion profiles stored as SQLite database. Portable — easy to migrate to Postgres when moving to work estate.
@@ -227,7 +227,7 @@ Triggered 30 minutes before any calendar event that includes a known champion.
 ### Phase 1 — Foundation & UI mockup
 - [ ] Data model (SQLite schema for champion profiles, interactions, triggers)
 - [ ] Web dashboard mockup — all 4 tabs, static data, no backend logic
-- [ ] Validate UX with Rich before building logic
+- [ ] Validate UX with the user before building logic
 
 ### Phase 2 — Core intelligence
 - [ ] Transcript upload + AI extraction (personal/professional wins)
@@ -255,7 +255,7 @@ Triggered 30 minutes before any calendar event that includes a known champion.
 - LinkedIn monitoring (manual URL entry only)
 - Teams integration
 - Customer champion track (post-close nurture/leverage)
-- Auto-sending messages on Rich's behalf
+- Auto-sending messages on the user's behalf
 - Multi-user / team access
 
 ---

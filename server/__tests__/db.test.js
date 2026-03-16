@@ -224,10 +224,10 @@ describe('pending triggers', () => {
 describe('getChampionsByLocation', () => {
   it('finds champions by city', () => {
     makeChampion({ name: 'London Person', location_city: 'London', location_country: 'UK' })
-    makeChampion({ name: 'Zurich Person', location_city: 'Zurich', location_country: 'Switzerland' })
+    makeChampion({ name: 'Continental Re Person', location_city: 'Continental Re', location_country: 'Switzerland' })
     const results = getChampionsByLocation('London', 'UK')
     expect(results.some(c => c.name === 'London Person')).toBe(true)
-    expect(results.some(c => c.name === 'Zurich Person')).toBe(false)
+    expect(results.some(c => c.name === 'Continental Re Person')).toBe(false)
   })
 
   it('excludes archived champions', () => {

@@ -59,7 +59,7 @@ describe('GET /api/champions', () => {
 describe('POST /api/champions', () => {
   it('creates a champion', async () => {
     const res = await request(makeApp()).post('/api/champions').send({
-      name: 'Jane Smith', company: 'Aviva', role: 'CTO', type: 'prospect'
+      name: 'Jane Smith', company: 'Meridian Insurance', role: 'CTO', type: 'prospect'
     })
     expect(res.status).toBe(201)
     expect(res.body.name).toBe('Jane Smith')
@@ -78,7 +78,7 @@ describe('GET /api/champions/:id', () => {
   it('returns full champion with enriched data', async () => {
     const app = makeApp()
     const create = await request(app).post('/api/champions').send({
-      name: 'Rich Data', company: 'AXA', role: 'CDO', type: 'prospect'
+      name: 'Rich Data', company: 'Apex General', role: 'CDO', type: 'prospect'
     })
     const res = await request(app).get(`/api/champions/${create.body.id}`)
     expect(res.status).toBe(200)
